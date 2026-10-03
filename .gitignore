@@ -1,0 +1,32 @@
+# JavaScript
+node_modules/
+npm-debug.log*
+coverage/
+dist/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+local.properties
+*.jks
+*.keystore
+*.pem
+
+# Analytics data and runtime output
+data/
+*.duckdb
+*.duckdb.wal
+*.duckdb.tmp/
+*.log
+
+# Future Kotlin SDK
+.gradle/
+.kotlin/
+**/build/
+.idea/
+*.iml
+
+# Operating systems
+.DS_Store
+Thumbs.db
