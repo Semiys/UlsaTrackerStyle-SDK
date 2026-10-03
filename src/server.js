@@ -11,7 +11,7 @@ app.disable('x-powered-by');
 app.use(express.static(fileURLToPath(new URL('../public/', import.meta.url))));
 
 const server = app.listen(port, '0.0.0.0', () => {
-  console.log(`UlsaTracerStyle SDK 0.0.1: http://localhost:${port}`);
+  console.log(`UlsaTrackerStyle SDK 0.0.1: http://localhost:${port}`);
 });
 
 function shutdown() {
