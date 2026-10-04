@@ -53,6 +53,17 @@ p { margin: 0; line-height: 1.65; }
   background: var(--accent);
 }
 
+main > .button {
+  display: inline-block;
+  margin-top: 28px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #141414;
