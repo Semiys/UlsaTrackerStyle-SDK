@@ -12,7 +12,7 @@ const store = await AnalyticsStore.open(config.databasePath);
 const app = createApp({ config, store });
 
 const server = app.listen(port, '0.0.0.0', () => {
-  console.log(`UlsaTrackerStyle SDK 0.2.0: container port ${port}; dashboard /dashboard`);
+  console.log(`UlsaTrackerStyle SDK 0.3.0: container port ${port}; dashboard /dashboard`);
   console.log('Access keys are in DATA_DIR/access.json. Use node src/show-access.js inside the container.');
 });
 

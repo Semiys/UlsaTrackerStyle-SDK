@@ -4,29 +4,51 @@ let readKey = '';
 let request;
 let generation = 0;
 let loading = false;
+const labels = {
+  events: new Map([['screen_view', 'Открытие экрана'], ['button_click', 'Нажатие кнопки'], ['action_success', 'Успешное действие']]),
+  screens: new Map([['collection', 'Коллекция'], ['stats', 'Статистика'], ['profile', 'Профиль'], ['add_model', 'Добавление модели'], ['edit_model', 'Редактирование модели']]),
+  buttons: new Map([['add_model', 'Добавить модель'], ['open_filters', 'Открыть фильтры'], ['save_model', 'Сохранить модель']]),
+  actions: new Map([['model_saved', 'Модель добавлена'], ['model_updated', 'Модель изменена']]),
+};
 
 function message(text, error = false) {
   $('message').textContent = text;
   $('message').classList.toggle('error', error);
 }
 
-function table(id, rows, label) {
+function table(id, rows, columns) {
   const body = $(id);
   body.replaceChildren();
   if (!rows.length) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = 2;
+    td.colSpan = columns.length;
     td.textContent = 'Событий пока нет';
     tr.append(td); body.append(tr);
   }
   for (const row of rows) {
     const tr = document.createElement('tr');
-    for (const text of [row[label], number(row.count)]) {
-      const td = document.createElement('td'); td.textContent = text; tr.append(td);
+    for (const { key, names } of columns) {
+      const td = document.createElement('td');
+      const value = row[key];
+      if (key === 'count') td.textContent = number(value);
+      else if (value === null) td.textContent = 'Не указано';
+      else {
+        td.textContent = names?.get(value) ?? value;
+        if (names?.has(value)) {
+          const code = document.createElement('code');
+          code.className = 'identifier'; code.textContent = value; td.append(code);
+        }
+      }
+      tr.append(td);
     }
     body.append(tr);
   }
+}
+
+function limitNote(id, truncated, limit) {
+  $(id).hidden = !truncated;
+  $(id).textContent = truncated ? `Показаны первые ${limit} строк по количеству. Общие счётчики и график учитывают все события.` : '';
 }
 
 function chart(days) {
@@ -84,8 +106,18 @@ async function load() {
     $('range-label').textContent = `Последние ${data.days} дней · UTC`;
     $('events-count').textContent = number(data.totals.events);
     $('sessions-count').textContent = number(data.totals.sessions);
+    $('views-count').textContent = number(data.totals.screenViews);
+    $('clicks-count').textContent = number(data.totals.buttonClicks);
+    $('successes-count').textContent = number(data.totals.successfulActions);
     $('empty-state').hidden = data.totals.events !== 0;
-    chart(data.daily); table('events-table', data.byName, 'name'); table('screens-table', data.byScreen, 'screen');
+    chart(data.daily);
+    table('events-table', data.byName, [{ key: 'name', names: labels.events }, { key: 'count' }]);
+    table('screens-table', data.byScreenViews, [{ key: 'screen', names: labels.screens }, { key: 'count' }]);
+    table('buttons-table', data.byButton, [{ key: 'button', names: labels.buttons }, { key: 'screen', names: labels.screens }, { key: 'count' }]);
+    table('actions-table', data.byAction, [{ key: 'action', names: labels.actions }, { key: 'screen', names: labels.screens }, { key: 'count' }]);
+    for (const [id, key] of [['events-limit', 'byName'], ['screens-limit', 'byScreenViews'], ['buttons-limit', 'byButton'], ['actions-limit', 'byAction']]) {
+      limitNote(id, data.truncated[key], data.breakdownLimit);
+    }
     $('read-key').value = '';
     $('access-panel').hidden = true;
     $('stats-panel').hidden = false;

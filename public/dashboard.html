@@ -41,7 +41,11 @@
         <div class="metrics">
           <section class="panel"><p class="muted">События</p><p class="metric" id="events-count">0</p></section>
           <section class="panel"><p class="muted">Сессии с событиями</p><p class="metric" id="sessions-count">0</p></section>
+          <section class="panel"><p class="muted">Открытия экранов</p><p class="metric" id="views-count">0</p></section>
+          <section class="panel"><p class="muted">Нажатия кнопок</p><p class="metric" id="clicks-count">0</p></section>
+          <section class="panel"><p class="muted">Успешные действия</p><p class="metric" id="successes-count">0</p></section>
         </div>
+        <p class="muted small metrics-note">Сессия — период использования приложения, а не отдельный пользователь. Нажатие «Сохранить» и успешное сохранение учитываются отдельно.</p>
         <section class="panel chart-panel">
           <h2>События по дням</h2>
           <p class="muted small">Дни считаются по времени события в UTC.</p>
@@ -49,12 +53,30 @@
           <div class="chart-scroll"><svg id="daily-chart" role="img" aria-label="Количество событий по дням" viewBox="0 0 900 230"></svg></div>
         </section>
         <div class="tables">
-          <section class="panel"><h2>Действия</h2><table><thead><tr><th>Событие</th><th>Количество</th></tr></thead><tbody id="events-table"></tbody></table></section>
-          <section class="panel"><h2>Экраны</h2><p class="muted small">Все события, для которых указан экран.</p><table><thead><tr><th>Экран</th><th>Количество</th></tr></thead><tbody id="screens-table"></tbody></table></section>
+          <section class="panel">
+            <h2>Типы событий</h2>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Таблица типов событий"><table><thead><tr><th scope="col">Событие</th><th scope="col">Количество</th></tr></thead><tbody id="events-table"></tbody></table></div>
+            <p id="events-limit" class="muted small table-note" hidden></p>
+          </section>
+          <section class="panel">
+            <h2>Открытия экранов</h2><p class="muted small">Только события открытия. Нажатия на экране не увеличивают этот счётчик.</p>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Таблица открытий экранов"><table><thead><tr><th scope="col">Экран</th><th scope="col">Открытия</th></tr></thead><tbody id="screens-table"></tbody></table></div>
+            <p id="screens-limit" class="muted small table-note" hidden></p>
+          </section>
+          <section class="panel">
+            <h2>Нажатия кнопок</h2><p class="muted small">Одна кнопка на разных экранах показана отдельными строками.</p>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Таблица нажатий кнопок"><table><thead><tr><th scope="col">Кнопка</th><th scope="col">Экран</th><th scope="col">Нажатия</th></tr></thead><tbody id="buttons-table"></tbody></table></div>
+            <p id="buttons-limit" class="muted small table-note" hidden></p>
+          </section>
+          <section class="panel">
+            <h2>Успешные действия</h2><p class="muted small">Приложение подтверждает результат после завершения операции.</p>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Таблица успешных действий"><table><thead><tr><th scope="col">Действие</th><th scope="col">Экран</th><th scope="col">Количество</th></tr></thead><tbody id="actions-table"></tbody></table></div>
+            <p id="actions-limit" class="muted small table-note" hidden></p>
+          </section>
         </div>
       </section>
     </main>
-    <footer class="muted small">UlsaTrackerStyle SDK · Версия 0.2.0</footer>
+    <footer class="muted small">UlsaTrackerStyle SDK · Сервер 0.3.0</footer>
   </div>
 </body>
 </html>

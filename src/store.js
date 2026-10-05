@@ -82,9 +82,27 @@ export class AnalyticsStore {
       const parameters = { project: projectId, from, until };
       const filter = 'WHERE project_id = $project AND occurred_at >= $from::TIMESTAMPTZ AND occurred_at < $until::TIMESTAMPTZ';
       const rows = async sql => (await this.connection.runAndReadAll(sql, parameters)).getRowObjects();
-      const [totals] = await rows(`SELECT count(*) AS events, count(DISTINCT session_id) AS sessions FROM events ${filter}`);
-      const byName = await rows(`SELECT name, count(*) AS count FROM events ${filter} GROUP BY name ORDER BY count DESC, name LIMIT 100`);
-      const byScreen = await rows(`SELECT screen, count(*) AS count FROM events ${filter} AND screen IS NOT NULL GROUP BY screen ORDER BY count DESC, screen LIMIT 100`);
+      const breakdownLimit = 100;
+      const [totals] = await rows(`SELECT count(*) AS events, count(DISTINCT session_id) AS sessions,
+        count(*) FILTER (WHERE name = 'screen_view') AS screen_views,
+        count(*) FILTER (WHERE name = 'button_click') AS button_clicks,
+        count(*) FILTER (WHERE name = 'action_success') AS successful_actions
+        FROM events ${filter}`);
+      const byName = await rows(`SELECT name, count(*) AS count FROM events ${filter} GROUP BY name ORDER BY count DESC, name LIMIT 101`);
+      const byScreen = await rows(`SELECT screen, count(*) AS count FROM events ${filter} AND screen IS NOT NULL GROUP BY screen ORDER BY count DESC, screen LIMIT 101`);
+      const byScreenViews = await rows(`SELECT screen, count(*) AS count FROM events ${filter}
+        AND name = 'screen_view' GROUP BY screen ORDER BY count DESC, screen NULLS LAST LIMIT 101`);
+      // Only strings identify a button/action; missing or wrongly typed properties stay visible as null.
+      const byButton = await rows(`SELECT
+        CASE WHEN json_type(properties, '$.button') = 'VARCHAR'
+          THEN nullif(trim(json_extract_string(properties, '$.button')), '') END AS button,
+        screen, count(*) AS count FROM events ${filter} AND name = 'button_click'
+        GROUP BY button, screen ORDER BY count DESC, button NULLS LAST, screen NULLS LAST LIMIT 101`);
+      const byAction = await rows(`SELECT
+        CASE WHEN json_type(properties, '$.action') = 'VARCHAR'
+          THEN nullif(trim(json_extract_string(properties, '$.action')), '') END AS action,
+        screen, count(*) AS count FROM events ${filter} AND name = 'action_success'
+        GROUP BY action, screen ORDER BY count DESC, action NULLS LAST, screen NULLS LAST LIMIT 101`);
       const buckets = await rows(`SELECT strftime(occurred_at, '%Y-%m-%d') AS date, count(*) AS count FROM events ${filter} GROUP BY date ORDER BY date`);
       const number = value => {
         const result = Number(value);
@@ -92,11 +110,19 @@ export class AnalyticsStore {
         return result;
       };
       const counts = new Map(buckets.map(row => [row.date, number(row.count)]));
+      const groups = { byName, byScreen, byScreenViews, byButton, byAction };
       return {
         days, timezone: 'UTC', from, until,
-        totals: { events: number(totals.events), sessions: number(totals.sessions) },
-        byName: byName.map(row => ({ name: row.name, count: number(row.count) })),
-        byScreen: byScreen.map(row => ({ screen: row.screen, count: number(row.count) })),
+        totals: {
+          events: number(totals.events), sessions: number(totals.sessions),
+          screenViews: number(totals.screen_views), buttonClicks: number(totals.button_clicks),
+          successfulActions: number(totals.successful_actions),
+        },
+        breakdownLimit,
+        truncated: Object.fromEntries(Object.entries(groups).map(([name, values]) => [name, values.length > breakdownLimit])),
+        ...Object.fromEntries(Object.entries(groups).map(([name, values]) => [
+          name, values.slice(0, breakdownLimit).map(row => ({ ...row, count: number(row.count) })),
+        ])),
         daily: Array.from({ length: days }, (_, i) => {
           const date = new Date(today - (days - 1 - i) * 86_400_000).toISOString().slice(0, 10);
           return { date, count: counts.get(date) ?? 0 };

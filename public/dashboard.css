@@ -26,7 +26,10 @@ input, select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px s
 .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .controls select { width: auto; }
 .metrics, .tables { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-.metrics { margin-bottom: 20px; }
+.metrics { margin-bottom: 20px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.tables { align-items: start; }
+.metrics-note { margin-bottom: 20px; }
+.tables .panel { min-width: 0; }
 .metric { font-size: 44px; font-weight: 700; letter-spacing: -.04em; }
 .chart-panel { margin-bottom: 20px; }
 .chart-scroll { overflow-x: auto; }
@@ -34,15 +37,25 @@ input, select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px s
 .chart-bar { fill: var(--accent); }
 .chart-zero { fill: var(--border); }
 .chart-label { fill: var(--muted); font: 12px system-ui, sans-serif; }
-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.table-scroll { max-height: 460px; overflow: auto; margin-top: 12px; }
+.table-scroll:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 th, td { padding: 12px 0; border-bottom: 1px solid var(--border); text-align: left; overflow-wrap: anywhere; }
-th { color: var(--muted); font-size: 13px; }
-th:last-child, td:last-child { text-align: right; padding-left: 16px; }
+th { position: sticky; top: 0; background: var(--surface); color: var(--muted); font-size: 13px; }
+th:not(:last-child), td:not(:last-child) { padding-right: 12px; }
+.identifier { display: block; margin-top: 4px; color: var(--muted); font: 12px system-ui, sans-serif; }
+.table-note { margin-top: 12px; }
+th:last-child, td:last-child { width: 24%; text-align: right; padding-left: 12px; }
 .message { min-height: 24px; margin: 0 0 20px; overflow-wrap: anywhere; }
 .message.error { color: var(--accent); }
 footer { padding: 32px 0 8px; }
 @media (max-width: 650px) {
-  .metrics, .tables { grid-template-columns: 1fr; }
+  .tables { grid-template-columns: 1fr; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .metrics .panel { padding: 16px; }
+  .metrics .panel:last-child { grid-column: 1 / -1; }
+  .metric { font-size: 36px; }
+  th:last-child, td:last-child { width: 32%; padding-left: 8px; }
   .stats-header { align-items: flex-start; }
   .controls { width: 100%; }
 }

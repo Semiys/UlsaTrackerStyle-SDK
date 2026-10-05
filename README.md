@@ -4,18 +4,18 @@
 
 ## Текущее состояние
 
-Исходники версии **0.2.0**, сервер и первая Android SDK:
+Текущая версия сервера — **0.3.0**, Kotlin SDK — **0.2.0**:
 
 - `POST /api/v1/events`: проверка и приём пакетов событий.
 - DuckDB: транзакционная запись, повторы без двойного учёта, сохранение в Docker volume.
 - Отдельные ключи отправки и просмотра для одного проекта.
 - `GET /api/v1/stats`: события, сессии, действия, экраны и дневные суммы UTC.
-- `/dashboard`: реальные счётчики, таблицы и график после ввода ключа просмотра.
+- `/dashboard`: счётчики открытий экранов, нажатий и успешных действий, таблицы кнопок/действий по экранам и дневной график после ввода ключа просмотра.
 - Автоматические проверки с настоящими DuckDB и HTTP; команда ручного диагностического события.
 
 **Kotlin/KMP SDK реализована для Android и JVM:** постоянная ограниченная очередь, фоновая пакетная отправка, повторы и подтверждения. Код и подключение — [sdk/kotlin/README.md](sdk/kotlin/README.md), правила — [SDK_API.md](docs/SDK_API.md). В «Дом Коллекционера» добавлена необязательная локальная debug-интеграция. Проверки телефона — [SDK_CHECKLIST.md](docs/SDK_CHECKLIST.md). iOS-адаптер ещё не реализован.
 
-**0.0.1 для ЛР1** опубликована отдельно: [Docker Hub](https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk). В ней первая страница без БД и аналитики. Локальная 0.2.0 не опубликована; старый тег не заменяется автоматически.
+**0.0.1 для ЛР1** опубликована отдельно: [Docker Hub](https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk). В ней первая страница без БД и аналитики. Локальная 0.3.0 не опубликована; старый тег не заменяется автоматически.
 
 ## Запуск текущего кода
 
@@ -24,8 +24,8 @@
 В терминале папки репозитория:
 
 ```bash
-docker build -t ulsatrackerstyle-sdk:0.2.0 .
-docker run --rm -d --name ulsa-tracker-dev --memory 512m --cpus 2 -p 127.0.0.1:8080-8180:8080 --mount type=volume,source=ulsa-tracker-dev-data,target=/app/data ulsatrackerstyle-sdk:0.2.0
+docker build -t ulsatrackerstyle-sdk:0.3.0 .
+docker run -d --name ulsa-tracker-dev --memory 512m --cpus 2 -p 127.0.0.1:8080-8180:8080 --mount type=volume,source=ulsa-tracker-dev-data,target=/app/data ulsatrackerstyle-sdk:0.3.0
 docker port ulsa-tracker-dev 8080/tcp
 ```
 
@@ -55,15 +55,17 @@ docker logs ulsa-tracker-dev
 docker stop ulsa-tracker-dev
 ```
 
-Контейнер с `--rm` удалится, **том `ulsa-tracker-dev-data` останется**. Повторите `docker run` с тем же томом — ключи и данные сохранятся. `--new` всегда создаёт новое событие и новую тестовую сессию; `--repeat` повторяет последнее, сохранённое в этом томе. Один том DuckDB нельзя подключать для записи к двум работающим серверам.
+Контейнер останется в Docker Desktop после остановки. Для следующего запуска: `docker start ulsa-tracker-dev`. Ключи и данные находятся в томе `ulsa-tracker-dev-data`. `--new` всегда создаёт новое событие и новую тестовую сессию; `--repeat` повторяет последнее, сохранённое в этом томе. Один том DuckDB нельзя подключать для записи к двум работающим серверам.
+
+Для перехода с 0.2.0 на 0.3.0 сначала соберите новый образ, затем выполните `docker stop ulsa-tracker-dev` и `docker rm ulsa-tracker-dev`, после чего повторите команду `docker run` с **тем же** томом. Не удаляйте том: схема БД и формат событий не изменились, прежние события доступны новой панели.
 
 На новом томе проект называется «Дом Коллекционера», ID `dom-collection`. Для другого проекта передайте `-e PROJECT_ID=my-app -e PROJECT_NAME="Моё приложение"` в `docker run`. Эти настройки сохраняются в `access.json`; у существующего тома приоритет у сохранённой конфигурации.
 
 ## Автоматические проверки
 
 ```bash
-docker build --target test -t ulsa-tracker-tests:0.2.0 .
-docker run --rm --memory 512m --cpus 2 ulsa-tracker-tests:0.2.0
+docker build --target test -t ulsa-tracker-tests:0.3.0 .
+docker run --rm --memory 512m --cpus 2 ulsa-tracker-tests:0.3.0
 ```
 
 Тесты используют отдельные временные базы внутри проверочного контейнера. Рабочий том к ним не подключается. Сценарии и результаты — [MVP_CHECKLIST.md](docs/MVP_CHECKLIST.md).
@@ -71,7 +73,7 @@ docker run --rm --memory 512m --cpus 2 ulsa-tracker-tests:0.2.0
 Для локальной сборки обеих архитектур на Docker Desktop с поддержкой multi-platform load:
 
 ```bash
-docker buildx build --builder desktop-linux --platform linux/amd64,linux/arm64 --load -t ulsatrackerstyle-sdk:0.2.0 .
+docker buildx build --builder desktop-linux --platform linux/amd64,linux/arm64 --load -t ulsatrackerstyle-sdk:0.3.0 .
 ```
 
 Если builder не поддерживает загрузку нескольких платформ, собирайте локально нужную через `--platform linux/amd64` или `--platform linux/arm64`. Для публикации двух вариантов используется `--push`.
@@ -94,8 +96,8 @@ docker port ulsa-tracker-lab1 8080/tcp
 
 ```bash
 docker login
-docker buildx build --platform linux/amd64,linux/arm64 -t semiys/ulsatrackerstyle-sdk:0.2.0 --push .
-docker buildx imagetools inspect semiys/ulsatrackerstyle-sdk:0.2.0
+docker buildx build --platform linux/amd64,linux/arm64 -t semiys/ulsatrackerstyle-sdk:0.3.0 --push .
+docker buildx imagetools inspect semiys/ulsatrackerstyle-sdk:0.3.0
 ```
 
 В выводе нужны обе платформы. Аттестации `unknown/unknown` не заменяют их. Не выполняйте обычный `docker push` образа одной архитектуры поверх общего тега. Коммиты, GitHub push и публикацию Docker Hub выполняет пользователь.
@@ -108,7 +110,7 @@ docker buildx imagetools inspect semiys/ulsatrackerstyle-sdk:0.2.0
 
 Это блок локальной разработки: один настроенный проект, один процесс-владелец DuckDB. Очередь операций ограничена, HTTP-пакет до 64 КиБ. HTTPS, ограничение частоты, управление проектами, ротация ключей, срок хранения и нагрузочные измерения — следующие этапы перед публичным запуском. Ключ в мобильном клиенте не является секретом администратора.
 
-Сессии — разные `sessionId` с событиями в периоде, **не пользователи**. «Экраны» считает все события с экраном, не только открытия. Дни определяются временем `occurredAt` в UTC.
+Сессии — разные `sessionId` с событиями в периоде, **не пользователи**. «Открытия экранов» учитывает только `screen_view`; клики и успешные действия показаны отдельно. Одинаковые кнопки на разных экранах — разные строки. Неизвестные имена отображаются как переданы SDK, отсутствующие имена — «Не указано». Таблицы ограничены первыми 100 группами; при превышении показано предупреждение, а общие счётчики и график учитывают все события. Дни определяются временем `occurredAt` в UTC.
 
 ## Технологии и документы
 
@@ -117,6 +119,7 @@ Node.js **24.21.0**, Express **5.2.1**, `@duckdb/node-api` **1.5.6-r.1**. Зав
 - [Контракт событий и HTTP API](docs/EVENT_CONTRACT.md).
 - [Проект мобильной SDK](docs/SDK_API.md).
 - [Ручные проверки текущего блока](docs/MVP_CHECKLIST.md).
+- [Проверки детализации панели 0.3.0](docs/DASHBOARD_CHECKLIST.md).
 - [План, архитектура и расчёт нагрузки](docs/PROJECT_PLAN.md).
 - [ЛР1 и отчёт](docs/LAB1.md).
 - [Проверки второго ПК для ЛР1](docs/SECOND_PC_CHECKLIST.md).

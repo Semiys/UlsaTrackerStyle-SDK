@@ -25,7 +25,7 @@ export function createApp({ config, store }) {
     res.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'");
     next();
   });
-  app.get('/health', (req, res) => res.json({ status: 'ok', version: '0.2.0' }));
+  app.get('/health', (req, res) => res.json({ status: 'ok', version: '0.3.0' }));
   app.post('/api/v1/events', authorize(config.ingestKey), (req, res, next) => {
     if (!req.is('application/json')) return next(new ApiError(415, 'unsupported_media_type', 'Требуется Content-Type: application/json.'));
     next();
