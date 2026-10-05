@@ -1,0 +1,11 @@
+<%- include('partials/head', { title: 'Отказ в выполнении действия' }) %>
+<main class="dashboard-main narrow">
+  <section class="panel error-panel">
+    <p class="eyebrow">Действие отклонено · <%= status %></p><h1>Действие не выполнено</h1>
+    <% if (example) { %><p class="muted">Пример отказа использует настоящую проверку сервера. Повторите его через форму.</p><% } %>
+    <dl class="error-details"><dt>Кто выполнял действие</dt><dd><%= actor %></dd><dt>Что пытался сделать</dt><dd><%= operation %></dd><dt>Причина отказа</dt><dd><%= reason %></dd><% if (field) { %><dt>Поле</dt><dd><code><%= field %></code></dd><% } %></dl>
+    <p class="muted">Ошибочный пакет не записывается. Ранее сохранённые события остаются без изменений.</p>
+    <div class="page-actions"><a class="button" href="/events/new<%= example ? '?example=invalid' : '' %>">Вернуться к форме</a><a class="button secondary" href="/dashboard">Посмотреть события</a></div>
+  </section>
+</main>
+<%- include('partials/foot') %>

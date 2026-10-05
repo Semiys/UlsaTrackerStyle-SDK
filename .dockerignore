@@ -7,3 +7,5 @@
 !public/**
 !test/
 !test/**
+!views/
+!views/**

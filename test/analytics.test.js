@@ -23,7 +23,7 @@ const packet = events => ({ schemaVersion: 1, events });
 
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), 'ulsa-test-'));
-  const config = await loadConfig({ DATA_DIR: directory });
+  const config = await loadConfig({ DATA_DIR: directory, STORAGE_BACKEND: 'duckdb' });
   const store = await AnalyticsStore.open(config.databasePath);
   const server = createApp({ config, store }).listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -323,4 +323,19 @@ test('manual diagnostic command sends a real event and retries the same packet',
   assert.equal(retry.duplicates, 1);
   assert.deepEqual(first.acknowledgedEventIds, retry.acknowledgedEventIds);
   assert.equal((await f.getStats()).totals.events, 1);
+});
+
+test('preserved DuckDB backend supplies recent events to the shared dashboard API', async t => {
+  const f = await fixture(t);
+  const source = event({ properties: { button: 'save_model' } });
+  assert.equal((await f.post(packet([source]))).status, 200);
+  const response = await fetch(f.url + '/api/v1/events/recent', { headers: { Authorization: `Bearer ${f.config.readKey}` } });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.events.length, 1);
+  assert.equal(result.events[0].eventId, source.eventId);
+  assert.equal(result.events[0].occurredAt, source.occurredAt);
+  assert.deepEqual(result.events[0].properties, source.properties);
+  assert.ok(Number.isFinite(Date.parse(result.events[0].receivedAt)));
+  assert.equal(Object.hasOwn(result.events[0], 'payloadHash'), false);
 });

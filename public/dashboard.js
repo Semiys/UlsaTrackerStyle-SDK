@@ -1,6 +1,6 @@
 const $ = id => document.getElementById(id);
 const number = value => new Intl.NumberFormat('ru-RU').format(value);
-let readKey = '';
+let readKey = document.body.dataset.demoReadKey ?? '';
 let request;
 let generation = 0;
 let loading = false;
@@ -80,6 +80,29 @@ function busy(value) {
   for (const id of ['open-button', 'refresh-button', 'days']) $(id).disabled = value;
 }
 
+function recent(events) {
+  const body = $('recent-table');
+  body.replaceChildren();
+  if (!events.length) {
+    const tr = document.createElement('tr'); const td = document.createElement('td');
+    td.colSpan = 4; td.textContent = 'Событий пока нет'; tr.append(td); body.append(tr);
+  }
+  for (const event of events) {
+    const tr = document.createElement('tr');
+    const values = [
+      [new Date(event.receivedAt).toLocaleString('ru-RU', { timeZone: 'UTC' }), event.eventId],
+      [labels.events.get(event.name) ?? event.name, event.screen ?? 'Не указано'],
+      [event.platform, event.appVersion], [JSON.stringify(event.properties), null],
+    ];
+    for (const [value, detail] of values) {
+      const td = document.createElement('td'); td.textContent = value;
+      if (detail) { const code = document.createElement('code'); code.className = 'identifier'; code.textContent = detail; td.append(code); }
+      tr.append(td);
+    }
+    body.append(tr);
+  }
+}
+
 function logout() {
   generation++;
   request?.abort();
@@ -95,13 +118,17 @@ async function load() {
   request = new AbortController();
   busy(true); message('Обновляем статистику…');
   try {
-    const response = await fetch(`/api/v1/stats?days=${$('days').value}`, { headers: { Authorization: `Bearer ${readKey}` }, signal: request.signal, cache: 'no-store' });
-    const data = await response.json();
+    const options = { headers: { Authorization: `Bearer ${readKey}` }, signal: request.signal, cache: 'no-store' };
+    const [response, recentResponse] = await Promise.all([
+      fetch(`/api/v1/stats?days=${$('days').value}`, options), fetch('/api/v1/events/recent', options),
+    ]);
+    const [data, recentData] = await Promise.all([response.json(), recentResponse.json()]);
     if (current !== generation) return;
     if (!response.ok) {
       if (response.status === 401) logout();
       throw new Error(data.error?.message ?? 'Не удалось получить статистику.');
     }
+    if (!recentResponse.ok) throw new Error(recentData.error?.message ?? 'Не удалось получить последние события.');
     $('project-title').textContent = data.project.name;
     $('range-label').textContent = `Последние ${data.days} дней · UTC`;
     $('events-count').textContent = number(data.totals.events);
@@ -118,6 +145,7 @@ async function load() {
     for (const [id, key] of [['events-limit', 'byName'], ['screens-limit', 'byScreenViews'], ['buttons-limit', 'byButton'], ['actions-limit', 'byAction']]) {
       limitNote(id, data.truncated[key], data.breakdownLimit);
     }
+    recent(recentData.events);
     $('read-key').value = '';
     $('access-panel').hidden = true;
     $('stats-panel').hidden = false;
@@ -131,3 +159,4 @@ $('access-form').addEventListener('submit', e => { e.preventDefault(); readKey =
 $('refresh-button').addEventListener('click', load);
 $('days').addEventListener('change', load);
 $('logout-button').addEventListener('click', () => { logout(); message('Доступ закрыт.'); });
+if (readKey) load();

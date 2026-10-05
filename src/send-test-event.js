@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { loadConfig } from './config.js';
+import { SERVER_VERSION } from './version.js';
 
 // This command explicitly creates a diagnostic event; startup never seeds data.
 const mode = process.argv[2];
@@ -15,7 +16,7 @@ let packet;
 if (mode === '--new') {
   packet = { schemaVersion: 1, events: [{
     eventId: randomUUID(), sessionId: randomUUID(), occurredAt: new Date().toISOString(),
-    name: 'button_click', screen: 'sdk_check', platform: 'web', appVersion: '0.3.0',
+    name: 'button_click', screen: 'sdk_check', platform: 'web', appVersion: SERVER_VERSION,
     properties: { button: 'test_event', source: 'manual_check' },
   }] };
   await writeFile(path, JSON.stringify(packet, null, 2) + '\n', { mode: 0o600 });

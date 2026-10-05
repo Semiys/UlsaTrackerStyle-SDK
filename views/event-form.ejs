@@ -1,0 +1,27 @@
+<%- include('partials/head', { title: 'Отправить событие' }) %>
+<main class="dashboard-main narrow">
+  <section class="panel">
+    <p class="eyebrow">Создание события</p><h1>Отправить событие</h1>
+    <p class="muted">Форма проверяет работу сервиса. После сохранения откроется статистика. Событие формы помечено платформой web; события SDK — android.</p>
+    <% if (invalidExample) { %><p class="message error">Пример ошибки: название оставлено пустым. Нажмите «Сохранить событие», чтобы проверить отказ сервера.</p><% } %>
+    <form action="/events" method="post" id="event-form">
+      <input type="hidden" name="eventId" value="<%= eventId %>">
+      <input type="hidden" name="sessionId" value="<%= sessionId %>">
+      <input type="hidden" name="occurredAt" value="<%= occurredAt %>">
+      <input type="hidden" name="csrfToken" value="<%= csrfToken %>">
+      <% if (demoMode) { %><input type="hidden" name="ingestKey" value="<%= demoIngestKey %>"><% } else { %>
+      <label for="ingest-key">Ключ отправки событий</label><input id="ingest-key" type="password" name="ingestKey" autocomplete="off" maxlength="128" required>
+      <% } %>
+      <label for="event-name">Название события</label>
+      <input id="event-name" name="name" value="<%= invalidExample ? '' : 'button_click' %>" maxlength="64" spellcheck="false" autocomplete="off" aria-describedby="name-help">
+      <p class="muted small" id="name-help">Например: button_click, screen_view или action_success. Латинские буквы, цифры и подчёркивания. Пустое значение проверяется сервером.</p>
+      <label for="event-screen">Экран <span class="muted small">· необязательно</span></label>
+      <input id="event-screen" name="screen" value="collection" maxlength="64" spellcheck="false" autocomplete="off">
+      <label for="event-detail">Название кнопки или действия <span class="muted small">· необязательно</span></label>
+      <input id="event-detail" name="detail" value="open_filters" maxlength="256" spellcheck="false" autocomplete="off">
+      <p class="muted small">Каждое открытие формы создаёт новое событие. Повторная отправка той же формы учитывается один раз.</p>
+      <div class="page-actions"><button class="button" type="submit">Сохранить событие</button><a class="button secondary" href="/events/new?example=invalid">Заполнить пример ошибки</a></div>
+    </form>
+  </section>
+</main>
+<%- include('partials/foot') %>

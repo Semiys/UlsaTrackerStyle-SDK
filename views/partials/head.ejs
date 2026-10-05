@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title><%= title %> — <%= product %></title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/dashboard.css">
+  <link rel="stylesheet" href="/pages.css">
+  <% if (active === 'dashboard') { %><script src="/dashboard.js" defer></script><% } %>
+</head>
+<body class="dashboard-page" data-demo-read-key="<%= typeof demoReadKey === 'string' ? demoReadKey : '' %>">
+<div class="layout">
+  <header class="page-header">
+    <div><a class="brand" href="/"><%= product %></a><p class="muted small">Аналитика мобильных приложений</p></div>
+    <nav class="page-nav" aria-label="Основная навигация">
+      <% for (const item of [{ href: '/', label: 'Главная', key: 'home' }, { href: '/events/new', label: 'Отправить событие', key: 'form' }, { href: '/dashboard', label: 'Статистика', key: 'dashboard' }, { href: '/error', label: 'Пример отказа', key: 'error' }]) { %>
+        <a class="button secondary" href="<%= item.href %>" <% if (active === item.key) { %>aria-current="page"<% } %>><%= item.label %></a>
+      <% } %>
+    </nav>
+  </header>
+  <% if (demoMode) { %><p class="demo-banner">Учебная демонстрация ЛР2 · отдельный проект · данные сохраняются в JSON</p><% } %>

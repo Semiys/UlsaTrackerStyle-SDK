@@ -1,0 +1,43 @@
+<%- include('partials/head', { title: 'Статистика' }) %>
+<main class="dashboard-main">
+  <% if (saved) { %><p class="success-message" role="status">Событие сохранено. Оно появилось в списке и учтено в статистике.</p><% } %>
+  <section class="panel access-panel" id="access-panel" aria-labelledby="access-title" <% if (demoMode) { %>hidden<% } %>>
+    <p class="eyebrow">Доступ к проекту</p><h1 id="access-title">Посмотреть статистику</h1>
+    <p class="muted">Введите ключ просмотра вашего проекта. Ключ отправки используется при подключении приложения.</p>
+    <form id="access-form"><label for="read-key">Ключ просмотра статистики</label><input id="read-key" name="read-key" type="password" autocomplete="off" spellcheck="false" required maxlength="128"><button class="button" type="submit" id="open-button">Открыть статистику</button></form>
+    <p class="muted small">Ключ действует в этой вкладке до обновления страницы или закрытия доступа.</p>
+  </section>
+  <p id="message" class="message" role="status" aria-live="polite"></p>
+  <section id="stats-panel" aria-labelledby="project-title" <% if (!demoMode) { %>hidden<% } %>>
+    <div class="stats-header"><div><p class="eyebrow">Ваш проект</p><h1 id="project-title"><%= demoMode ? projectName : '' %></h1><p class="muted" id="range-label">Последние 7 дней · UTC</p></div>
+      <div class="controls"><label for="days">Период</label><select id="days"><option value="7">7 дней</option><option value="30">30 дней</option></select><button class="button secondary" id="refresh-button" type="button">Обновить</button><button class="button secondary" id="logout-button" type="button" <% if (demoMode) { %>hidden<% } %>>Закрыть доступ</button></div>
+    </div>
+    <div class="metrics">
+      <% for (const metric of [{ label: 'События', id: 'events-count', key: 'events' }, { label: 'Сессии с событиями', id: 'sessions-count', key: 'sessions' }, { label: 'Открытия экранов', id: 'views-count', key: 'screenViews' }, { label: 'Нажатия кнопок', id: 'clicks-count', key: 'buttonClicks' }, { label: 'Успешные действия', id: 'successes-count', key: 'successfulActions' }]) { %>
+      <section class="panel"><p class="muted"><%= metric.label %></p><p class="metric" id="<%= metric.id %>"><%= initialStats?.totals[metric.key] ?? 0 %></p></section>
+      <% } %>
+    </div>
+    <p class="muted small metrics-note">Сессия — период использования приложения, а не отдельный пользователь. Нажатие «Сохранить» и успешное сохранение учитываются отдельно.</p>
+    <section class="panel chart-panel"><h2>События по дням</h2><p class="muted small">Дни считаются по времени события в UTC.</p><p id="empty-state" <% if (initialStats?.totals.events !== 0) { %>hidden<% } %>>События появятся после отправки формы или использования подключённого приложения.</p><div class="chart-scroll"><svg id="daily-chart" role="img" aria-label="Количество событий по дням" viewBox="0 0 900 230"></svg></div></section>
+    <div class="tables">
+      <% for (const table of [
+        { title: 'Типы событий', id: 'events', rows: initialStats?.byName ?? [], columns: [{ key: 'name', title: 'Событие' }, { key: 'count', title: 'Количество' }] },
+        { title: 'Открытия экранов', id: 'screens', rows: initialStats?.byScreenViews ?? [], columns: [{ key: 'screen', title: 'Экран' }, { key: 'count', title: 'Открытия' }] },
+        { title: 'Нажатия кнопок', id: 'buttons', rows: initialStats?.byButton ?? [], columns: [{ key: 'button', title: 'Кнопка' }, { key: 'screen', title: 'Экран' }, { key: 'count', title: 'Нажатия' }] },
+        { title: 'Успешные действия', id: 'actions', rows: initialStats?.byAction ?? [], columns: [{ key: 'action', title: 'Действие' }, { key: 'screen', title: 'Экран' }, { key: 'count', title: 'Количество' }] }
+      ]) { %>
+      <section class="panel"><h2><%= table.title %></h2><div class="table-scroll" tabindex="0" role="region" aria-label="<%= table.title %>"><table><thead><tr><% for (const column of table.columns) { %><th scope="col"><%= column.title %></th><% } %></tr></thead><tbody id="<%= table.id %>-table">
+        <% if (!table.rows.length) { %><tr><td colspan="<%= table.columns.length %>">Событий пока нет</td></tr><% } %>
+        <% for (const row of table.rows) { %><tr><% for (const column of table.columns) { %><td><%= row[column.key] ?? 'Не указано' %></td><% } %></tr><% } %>
+      </tbody></table></div><p id="<%= table.id %>-limit" class="muted small table-note" hidden></p></section>
+      <% } %>
+    </div>
+    <section class="panel recent-panel"><h2>Последние сохранённые события</h2><p class="muted small">Последние 50 записей по времени поступления, за весь период хранения. Время показано в UTC.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Сохранённые события"><table><thead><tr><th scope="col">Поступило, UTC</th><th scope="col">Событие / экран</th><th scope="col">Платформа / версия</th><th scope="col">Свойства</th></tr></thead><tbody id="recent-table">
+      <% if (!recentEvents.length) { %><tr><td colspan="4">Событий пока нет</td></tr><% } %>
+      <% for (const event of recentEvents) { %><tr><td><%= dateLabel(event.receivedAt) %><code class="identifier"><%= event.eventId %></code></td><td><%= eventLabel(event.name) %><code class="identifier"><%= event.screen ?? 'Не указано' %></code></td><td><%= event.platform %><code class="identifier"><%= event.appVersion %></code></td><td><%= JSON.stringify(event.properties) %></td></tr><% } %>
+      </tbody></table></div>
+    </section>
+  </section>
+</main>
+<%- include('partials/foot') %>

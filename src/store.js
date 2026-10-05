@@ -131,6 +131,20 @@ export class AnalyticsStore {
     });
   }
 
+  recent(projectId, limit = 50) {
+    return this.execute(async () => {
+      const result = await this.connection.runAndReadAll(`SELECT event_id, session_id, occurred_at, received_at,
+        name, screen, platform, app_version, properties FROM events WHERE project_id = $project
+        ORDER BY received_at DESC, event_id LIMIT $limit`, { project: projectId, limit });
+      return result.getRowObjects().map(row => ({
+        eventId: String(row.event_id), sessionId: String(row.session_id),
+        occurredAt: new Date(row.occurred_at.toString()).toISOString(), receivedAt: new Date(row.received_at.toString()).toISOString(),
+        name: row.name, screen: row.screen, platform: row.platform, appVersion: row.app_version,
+        properties: JSON.parse(row.properties),
+      }));
+    });
+  }
+
   async close() {
     if (this.closed) return;
     this.closed = true;
