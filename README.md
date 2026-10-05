@@ -4,7 +4,7 @@
 
 ## Текущее состояние
 
-Исходники версии **0.1.0**, первый серверный блок:
+Исходники версии **0.2.0**, сервер и первая Android SDK:
 
 - `POST /api/v1/events`: проверка и приём пакетов событий.
 - DuckDB: транзакционная запись, повторы без двойного учёта, сохранение в Docker volume.
@@ -13,9 +13,9 @@
 - `/dashboard`: реальные счётчики, таблицы и график после ввода ключа просмотра.
 - Автоматические проверки с настоящими DuckDB и HTTP; команда ручного диагностического события.
 
-**Мобильная SDK пока не написана.** Интерфейс и доставка спроектированы в [SDK_API.md](docs/SDK_API.md). Следующий блок — Kotlin/KMP и первые реальные события Android-приложения.
+**Kotlin/KMP SDK реализована для Android и JVM:** постоянная ограниченная очередь, фоновая пакетная отправка, повторы и подтверждения. Код и подключение — [sdk/kotlin/README.md](sdk/kotlin/README.md), правила — [SDK_API.md](docs/SDK_API.md). В «Дом Коллекционера» добавлена необязательная локальная debug-интеграция. Проверки телефона — [SDK_CHECKLIST.md](docs/SDK_CHECKLIST.md). iOS-адаптер ещё не реализован.
 
-**0.0.1 для ЛР1** опубликована отдельно: [Docker Hub](https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk). В ней первая страница без БД и аналитики. Локальная 0.1.0 ещё не опубликована; старый тег не заменяется автоматически.
+**0.0.1 для ЛР1** опубликована отдельно: [Docker Hub](https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk). В ней первая страница без БД и аналитики. Локальная 0.2.0 не опубликована; старый тег не заменяется автоматически.
 
 ## Запуск текущего кода
 
@@ -24,8 +24,8 @@
 В терминале папки репозитория:
 
 ```bash
-docker build -t ulsatrackerstyle-sdk:0.1.0 .
-docker run --rm -d --name ulsa-tracker-dev --memory 512m --cpus 2 -p 127.0.0.1:8080-8180:8080 --mount type=volume,source=ulsa-tracker-dev-data,target=/app/data ulsatrackerstyle-sdk:0.1.0
+docker build -t ulsatrackerstyle-sdk:0.2.0 .
+docker run --rm -d --name ulsa-tracker-dev --memory 512m --cpus 2 -p 127.0.0.1:8080-8180:8080 --mount type=volume,source=ulsa-tracker-dev-data,target=/app/data ulsatrackerstyle-sdk:0.2.0
 docker port ulsa-tracker-dev 8080/tcp
 ```
 
@@ -37,7 +37,7 @@ docker port ulsa-tracker-dev 8080/tcp
 docker exec ulsa-tracker-dev node src/show-access.js
 ```
 
-Скопируйте **`readKey`** в поле «Ключ просмотра статистики». **`ingestKey`** предназначен для будущей SDK и приёма событий; он не даёт доступа к просмотру. Ключи не присылаются в чат и не добавляются в Git.
+Скопируйте **`readKey`** в поле «Ключ просмотра статистики». **`ingestKey`** предназначен для SDK и приёма событий; он не даёт доступа к просмотру. Ключи не присылаются в чат и не добавляются в Git.
 
 Проверка API → БД → статистика до подключения SDK:
 
@@ -62,8 +62,8 @@ docker stop ulsa-tracker-dev
 ## Автоматические проверки
 
 ```bash
-docker build --target test -t ulsa-tracker-tests:0.1.0 .
-docker run --rm --memory 512m --cpus 2 ulsa-tracker-tests:0.1.0
+docker build --target test -t ulsa-tracker-tests:0.2.0 .
+docker run --rm --memory 512m --cpus 2 ulsa-tracker-tests:0.2.0
 ```
 
 Тесты используют отдельные временные базы внутри проверочного контейнера. Рабочий том к ним не подключается. Сценарии и результаты — [MVP_CHECKLIST.md](docs/MVP_CHECKLIST.md).
@@ -71,7 +71,7 @@ docker run --rm --memory 512m --cpus 2 ulsa-tracker-tests:0.1.0
 Для локальной сборки обеих архитектур на Docker Desktop с поддержкой multi-platform load:
 
 ```bash
-docker buildx build --builder desktop-linux --platform linux/amd64,linux/arm64 --load -t ulsatrackerstyle-sdk:0.1.0 .
+docker buildx build --builder desktop-linux --platform linux/amd64,linux/arm64 --load -t ulsatrackerstyle-sdk:0.2.0 .
 ```
 
 Если builder не поддерживает загрузку нескольких платформ, собирайте локально нужную через `--platform linux/amd64` или `--platform linux/arm64`. Для публикации двух вариантов используется `--push`.
@@ -94,8 +94,8 @@ docker port ulsa-tracker-lab1 8080/tcp
 
 ```bash
 docker login
-docker buildx build --platform linux/amd64,linux/arm64 -t semiys/ulsatrackerstyle-sdk:0.1.0 --push .
-docker buildx imagetools inspect semiys/ulsatrackerstyle-sdk:0.1.0
+docker buildx build --platform linux/amd64,linux/arm64 -t semiys/ulsatrackerstyle-sdk:0.2.0 --push .
+docker buildx imagetools inspect semiys/ulsatrackerstyle-sdk:0.2.0
 ```
 
 В выводе нужны обе платформы. Аттестации `unknown/unknown` не заменяют их. Не выполняйте обычный `docker push` образа одной архитектуры поверх общего тега. Коммиты, GitHub push и публикацию Docker Hub выполняет пользователь.

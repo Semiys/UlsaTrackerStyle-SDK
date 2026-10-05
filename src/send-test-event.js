@@ -15,7 +15,7 @@ let packet;
 if (mode === '--new') {
   packet = { schemaVersion: 1, events: [{
     eventId: randomUUID(), sessionId: randomUUID(), occurredAt: new Date().toISOString(),
-    name: 'button_click', screen: 'sdk_check', platform: 'web', appVersion: '0.1.0',
+    name: 'button_click', screen: 'sdk_check', platform: 'web', appVersion: '0.2.0',
     properties: { button: 'test_event', source: 'manual_check' },
   }] };
   await writeFile(path, JSON.stringify(packet, null, 2) + '\n', { mode: 0o600 });

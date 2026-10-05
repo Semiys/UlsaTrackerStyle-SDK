@@ -20,7 +20,7 @@ data/
 *.duckdb.tmp/
 *.log
 
-# Future Kotlin SDK
+# Kotlin SDK
 .gradle/
 .kotlin/
 **/build/
