@@ -1,11 +1,15 @@
 :root {
-  color-scheme: light dark;
-  --background: #f4f4f2;
-  --surface: #ffffff;
-  --text: #202020;
-  --muted: #656565;
-  --border: #dededb;
-  --accent: #bd2828;
+  color-scheme: light;
+  --background: #f8f9fa;
+  --surface: #ffffffd9;
+  --text: #3a3f44;
+  --muted: #6f7376;
+  --border: #d1d5d8;
+  --accent: #0cb7df;
+  --button-background: #121212;
+  --button-text: #ffffff;
+  --input-background: #f3f3f5;
+  --error: #d32d2d;
   font-family: Montserrat, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -58,19 +62,36 @@ main > .button {
   margin-top: 28px;
   padding: 12px 18px;
   border-radius: 12px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--button-background);
+  color: var(--button-text);
   font-weight: 600;
   text-decoration: none;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #141414;
-    --surface: #202020;
-    --text: #f5f5f3;
-    --muted: #b1b1ac;
-    --border: #363636;
-    --accent: #ef5353;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #0a0a0a;
+    --surface: #171717;
+    --text: #f5f5f6;
+    --muted: #949494;
+    --border: #2a2a2a;
+    --accent: #d32d2d;
+    --button-background: #ffffff;
+    --button-text: #000000;
+    --input-background: #1f1f1f;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --surface: #171717;
+  --text: #f5f5f6;
+  --muted: #949494;
+  --border: #2a2a2a;
+  --accent: #d32d2d;
+  --button-background: #ffffff;
+  --button-text: #000000;
+  --input-background: #1f1f1f;
 }

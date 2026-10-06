@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title><%= title %> — <%= product %></title>
+  <script src="/theme.js"></script>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/dashboard.css">
   <link rel="stylesheet" href="/pages.css">
@@ -19,5 +20,12 @@
         <a class="button secondary" href="<%= item.href %>" <% if (active === item.key) { %>aria-current="page"<% } %>><%= item.label %></a>
       <% } %>
     </nav>
+    <label class="theme-control" for="site-theme">Тема
+      <select id="site-theme">
+        <option value="system">Как в системе</option>
+        <option value="light">Светлая</option>
+        <option value="dark">Тёмная</option>
+      </select>
+    </label>
   </header>
   <% if (demoMode) { %><p class="demo-banner">Учебная демонстрация ЛР2 · отдельный проект · данные сохраняются в JSON</p><% } %>
