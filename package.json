@@ -1,6 +1,6 @@
 {
   "name": "ulsa-tracker-style-sdk",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "type": "module",
   "description": "UlsaTrackerStyle SDK — сервис продуктовой аналитики для мобильных приложений",

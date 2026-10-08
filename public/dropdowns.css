@@ -1,0 +1,40 @@
+.select-control { position: relative; display: inline-flex; min-width: 0; }
+.select-native { display: none; }
+.select-trigger {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 20px;
+  min-height: 44px; width: 100%; padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--input-background); color: var(--text);
+  font: inherit; font-weight: 500; text-align: left; cursor: pointer;
+}
+.select-trigger:hover:not(:disabled), .select-trigger[aria-expanded="true"] { border-color: var(--accent); }
+.select-trigger:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.select-trigger:disabled { opacity: .5; cursor: wait; }
+.select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-chevron {
+  flex: 0 0 7px; height: 7px; margin: -4px 2px 0 0;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg); color: var(--muted);
+}
+.select-trigger[aria-expanded="true"] .select-chevron { margin-top: 4px; transform: rotate(225deg); }
+.select-menu {
+  position: fixed; z-index: 20; padding: 6px; overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid var(--border); border-radius: 14px;
+  background: var(--menu-background); color: var(--text);
+  box-shadow: 0 12px 32px rgb(0 0 0 / .18);
+  font-size: 14px; font-weight: 500;
+}
+.select-option {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  min-height: 44px; padding: 10px 12px; border-radius: 8px; cursor: pointer;
+}
+.select-option[data-highlighted="true"] { background: var(--input-background); }
+.select-option[aria-selected="true"] {
+  background: var(--input-background);
+  background: color-mix(in srgb, var(--accent) 12%, var(--menu-background));
+}
+.select-option[aria-disabled="true"] { opacity: .5; cursor: default; }
+.select-check { visibility: hidden; color: var(--accent); font-size: 17px; }
+.select-option[aria-selected="true"] .select-check { visibility: visible; }
+.theme-control .select-control { min-width: 155px; }
+.controls .select-control { min-width: 120px; }

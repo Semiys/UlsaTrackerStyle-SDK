@@ -4,7 +4,9 @@
 
 ## Текущее состояние
 
-Сервер **0.4.1**, Kotlin SDK **0.2.0**, демонстрационный APK **1.2**. Для ЛР2 выделен образ **0.0.2**: один контейнер, Express, серверные шаблоны EJS и хранение в JSON. Реализация DuckDB сохранена для дальнейшего развития; в образ ЛР2 её пакет не устанавливается.
+Сервер **0.4.2**, Kotlin SDK **0.2.0**, демонстрационный APK **1.2**. Для ЛР2 выделен образ **0.0.2**: один контейнер, Express, серверные шаблоны EJS и хранение в JSON. Реализация DuckDB сохранена для дальнейшего развития; в образ ЛР2 её пакет не устанавливается.
+
+В локальной версии 0.4.2 тема и период статистики используют единое оформленное меню с галочкой, управлением с клавиатуры и палитрами приложения. Docker Hub остаётся на опубликованном сервере 0.4.1.
 
 В версии 0.4.1 добавлен выбор светлой, тёмной или системной темы. Палитры взяты из «Дома Коллекционера»; выбор сохраняется в браузере. 08.10.2026 образ ЛР2 0.0.2 обновлён до сервера 0.4.1 для Intel и ARM. Светлая тема использует голубой акцент, тёмная — красный; снимки отчётов сделаны после скачивания обновлённых образов.
 
@@ -107,8 +109,8 @@ docker run --rm --memory 512m --cpus 2 ulsa-lab2-tests:0.0.2
 Проверка JSON, HTTP и страниц — 12 тестов. Полный набор также проверяет сохранённую реализацию DuckDB:
 
 ```bash
-docker build --target test -t ulsa-tracker-all-tests:0.4.1 .
-docker run --rm --memory 512m --cpus 2 ulsa-tracker-all-tests:0.4.1
+docker build --target test -t ulsa-tracker-all-tests:0.4.2 .
+docker run --rm --memory 512m --cpus 2 ulsa-tracker-all-tests:0.4.2
 ```
 
 Тесты используют временные данные внутри проверочного контейнера. Рабочий том к ним не подключается. Для локальной загрузки обеих платформ на Docker Desktop используйте Buildx с `--platform linux/amd64,linux/arm64 --load`.
@@ -118,8 +120,8 @@ docker run --rm --memory 512m --cpus 2 ulsa-tracker-all-tests:0.4.1
 Исходники `src/store.js` и `src/schema.sql` сохранены. Обычная сборка устанавливает DuckDB как дополнительную зависимость; режим выбирается явно:
 
 ```bash
-docker build --target runtime -t ulsatrackerstyle-sdk:0.4.1 .
-docker run -d --name ulsa-tracker-duckdb --memory 512m --cpus 2 -e STORAGE_BACKEND=duckdb -p 127.0.0.1:8082:8080 --mount type=volume,source=ulsa-tracker-dev-data,target=/app/data ulsatrackerstyle-sdk:0.4.1
+docker build --target runtime -t ulsatrackerstyle-sdk:0.4.2 .
+docker run -d --name ulsa-tracker-duckdb --memory 512m --cpus 2 -e STORAGE_BACKEND=duckdb -p 127.0.0.1:8082:8080 --mount type=volume,source=ulsa-tracker-dev-data,target=/app/data ulsatrackerstyle-sdk:0.4.2
 ```
 
 Перед запуском с прежним томом остановите сервер, который уже пишет в него. Ключи обычного проекта можно посмотреть локально командой `docker exec ИМЯ_КОНТЕЙНЕРА node src/show-access.js`. Не добавляйте их в Git. Старый рабочий контейнер 0.3.0 и его события сохранены отдельно от демонстрации ЛР2.
@@ -147,7 +149,7 @@ docker run --rm -p 8080:8080 semiys/ulsatrackerstyle-sdk:0.0.1
 docker buildx build --platform linux/amd64,linux/arm64 -t semiys/ulsatrackerstyle-sdk:0.0.1 --push ./labs/lab1
 ```
 
-ЛР1 остаётся в теге **0.0.1**. ЛР2 публикуется отдельным тегом **0.0.2**, внутренний номер сервера — **0.4.1**.
+ЛР1 остаётся в теге **0.0.1**. ЛР2 публикуется отдельным тегом **0.0.2**, в опубликованном образе сервер — **0.4.1**, локальная версия интерфейса — **0.4.2**.
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 --target lab2 -t semiys/ulsatrackerstyle-sdk:0.0.2 --push .
