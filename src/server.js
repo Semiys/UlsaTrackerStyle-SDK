@@ -1,6 +1,7 @@
 import { loadConfig } from './config.js';
-import { AnalyticsStore } from './store.js';
+import { openStore } from './storage.js';
 import { createApp } from './app.js';
+import { SERVER_VERSION } from './version.js';
 
 const port = Number(process.env.PORT ?? 8080);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -8,11 +9,11 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 
 const config = await loadConfig();
-const store = await AnalyticsStore.open(config.databasePath);
+const store = await openStore(config);
 const app = createApp({ config, store });
 
 const server = app.listen(port, '0.0.0.0', () => {
-  console.log(`UlsaTrackerStyle SDK 0.2.0: container port ${port}; dashboard /dashboard`);
+  console.log(`UlsaTrackerStyle SDK ${SERVER_VERSION}: ${config.storageBackend}; container port ${port}; dashboard /dashboard`);
   console.log('Access keys are in DATA_DIR/access.json. Use node src/show-access.js inside the container.');
 });
 

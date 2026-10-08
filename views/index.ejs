@@ -1,0 +1,17 @@
+<%- include('partials/head', { title: 'Главная' }) %>
+<main class="dashboard-main">
+  <section class="panel hero">
+    <p class="eyebrow">События → статистика</p>
+    <h1><%= product %></h1>
+    <p class="description">SDK отмечает открытия экранов, нажатия кнопок и успешные действия. Сервер сохраняет события, а панель показывает, как используется приложение.</p>
+    <p class="version">Сервер <%= serverVersion %> · Kotlin SDK 0.2.0</p>
+    <p class="status">Разработка продолжается</p>
+    <div class="page-actions"><a class="button" href="/events/new">Отправить событие</a><a class="button secondary" href="/dashboard">Открыть статистику</a></div>
+  </section>
+  <section class="steps" aria-label="Проверка сервиса">
+    <article class="panel"><p class="eyebrow">01 · Запись</p><h2>Создайте событие</h2><p class="muted">Заполните форму. Данные проходят ту же проверку, что и пакеты мобильной SDK.</p></article>
+    <article class="panel"><p class="eyebrow">02 · Просмотр</p><h2>Проверьте результат</h2><p class="muted">В статистике появится запись, изменятся счётчики и дневной график.</p></article>
+    <article class="panel"><p class="eyebrow">03 · Отказ</p><h2>Проверьте ошибку</h2><p class="muted">Пустое название отклоняется. Причина видна на отдельной странице, данные не записываются.</p></article>
+  </section>
+</main>
+<%- include('partials/foot') %>

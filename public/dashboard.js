@@ -1,32 +1,54 @@
 const $ = id => document.getElementById(id);
 const number = value => new Intl.NumberFormat('ru-RU').format(value);
-let readKey = '';
+let readKey = document.body.dataset.demoReadKey ?? '';
 let request;
 let generation = 0;
 let loading = false;
+const labels = {
+  events: new Map([['screen_view', 'Открытие экрана'], ['button_click', 'Нажатие кнопки'], ['action_success', 'Успешное действие']]),
+  screens: new Map([['collection', 'Коллекция'], ['stats', 'Статистика'], ['profile', 'Профиль'], ['add_model', 'Добавление модели'], ['edit_model', 'Редактирование модели']]),
+  buttons: new Map([['add_model', 'Добавить модель'], ['open_filters', 'Открыть фильтры'], ['save_model', 'Сохранить модель']]),
+  actions: new Map([['model_saved', 'Модель добавлена'], ['model_updated', 'Модель изменена']]),
+};
 
 function message(text, error = false) {
   $('message').textContent = text;
   $('message').classList.toggle('error', error);
 }
 
-function table(id, rows, label) {
+function table(id, rows, columns) {
   const body = $(id);
   body.replaceChildren();
   if (!rows.length) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = 2;
+    td.colSpan = columns.length;
     td.textContent = 'Событий пока нет';
     tr.append(td); body.append(tr);
   }
   for (const row of rows) {
     const tr = document.createElement('tr');
-    for (const text of [row[label], number(row.count)]) {
-      const td = document.createElement('td'); td.textContent = text; tr.append(td);
+    for (const { key, names } of columns) {
+      const td = document.createElement('td');
+      const value = row[key];
+      if (key === 'count') td.textContent = number(value);
+      else if (value === null) td.textContent = 'Не указано';
+      else {
+        td.textContent = names?.get(value) ?? value;
+        if (names?.has(value)) {
+          const code = document.createElement('code');
+          code.className = 'identifier'; code.textContent = value; td.append(code);
+        }
+      }
+      tr.append(td);
     }
     body.append(tr);
   }
+}
+
+function limitNote(id, truncated, limit) {
+  $(id).hidden = !truncated;
+  $(id).textContent = truncated ? `Показаны первые ${limit} строк по количеству. Общие счётчики и график учитывают все события.` : '';
 }
 
 function chart(days) {
@@ -58,6 +80,29 @@ function busy(value) {
   for (const id of ['open-button', 'refresh-button', 'days']) $(id).disabled = value;
 }
 
+function recent(events) {
+  const body = $('recent-table');
+  body.replaceChildren();
+  if (!events.length) {
+    const tr = document.createElement('tr'); const td = document.createElement('td');
+    td.colSpan = 4; td.textContent = 'Событий пока нет'; tr.append(td); body.append(tr);
+  }
+  for (const event of events) {
+    const tr = document.createElement('tr');
+    const values = [
+      [new Date(event.receivedAt).toLocaleString('ru-RU', { timeZone: 'UTC' }), event.eventId],
+      [labels.events.get(event.name) ?? event.name, event.screen ?? 'Не указано'],
+      [event.platform, event.appVersion], [JSON.stringify(event.properties), null],
+    ];
+    for (const [value, detail] of values) {
+      const td = document.createElement('td'); td.textContent = value;
+      if (detail) { const code = document.createElement('code'); code.className = 'identifier'; code.textContent = detail; td.append(code); }
+      tr.append(td);
+    }
+    body.append(tr);
+  }
+}
+
 function logout() {
   generation++;
   request?.abort();
@@ -73,19 +118,34 @@ async function load() {
   request = new AbortController();
   busy(true); message('Обновляем статистику…');
   try {
-    const response = await fetch(`/api/v1/stats?days=${$('days').value}`, { headers: { Authorization: `Bearer ${readKey}` }, signal: request.signal, cache: 'no-store' });
-    const data = await response.json();
+    const options = { headers: { Authorization: `Bearer ${readKey}` }, signal: request.signal, cache: 'no-store' };
+    const [response, recentResponse] = await Promise.all([
+      fetch(`/api/v1/stats?days=${$('days').value}`, options), fetch('/api/v1/events/recent', options),
+    ]);
+    const [data, recentData] = await Promise.all([response.json(), recentResponse.json()]);
     if (current !== generation) return;
     if (!response.ok) {
       if (response.status === 401) logout();
       throw new Error(data.error?.message ?? 'Не удалось получить статистику.');
     }
+    if (!recentResponse.ok) throw new Error(recentData.error?.message ?? 'Не удалось получить последние события.');
     $('project-title').textContent = data.project.name;
     $('range-label').textContent = `Последние ${data.days} дней · UTC`;
     $('events-count').textContent = number(data.totals.events);
     $('sessions-count').textContent = number(data.totals.sessions);
+    $('views-count').textContent = number(data.totals.screenViews);
+    $('clicks-count').textContent = number(data.totals.buttonClicks);
+    $('successes-count').textContent = number(data.totals.successfulActions);
     $('empty-state').hidden = data.totals.events !== 0;
-    chart(data.daily); table('events-table', data.byName, 'name'); table('screens-table', data.byScreen, 'screen');
+    chart(data.daily);
+    table('events-table', data.byName, [{ key: 'name', names: labels.events }, { key: 'count' }]);
+    table('screens-table', data.byScreenViews, [{ key: 'screen', names: labels.screens }, { key: 'count' }]);
+    table('buttons-table', data.byButton, [{ key: 'button', names: labels.buttons }, { key: 'screen', names: labels.screens }, { key: 'count' }]);
+    table('actions-table', data.byAction, [{ key: 'action', names: labels.actions }, { key: 'screen', names: labels.screens }, { key: 'count' }]);
+    for (const [id, key] of [['events-limit', 'byName'], ['screens-limit', 'byScreenViews'], ['buttons-limit', 'byButton'], ['actions-limit', 'byAction']]) {
+      limitNote(id, data.truncated[key], data.breakdownLimit);
+    }
+    recent(recentData.events);
     $('read-key').value = '';
     $('access-panel').hidden = true;
     $('stats-panel').hidden = false;
@@ -99,3 +159,4 @@ $('access-form').addEventListener('submit', e => { e.preventDefault(); readKey =
 $('refresh-button').addEventListener('click', load);
 $('days').addEventListener('change', load);
 $('logout-button').addEventListener('click', () => { logout(); message('Доступ закрыт.'); });
+if (readKey) load();

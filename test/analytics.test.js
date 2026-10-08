@@ -23,7 +23,7 @@ const packet = events => ({ schemaVersion: 1, events });
 
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), 'ulsa-test-'));
-  const config = await loadConfig({ DATA_DIR: directory });
+  const config = await loadConfig({ DATA_DIR: directory, STORAGE_BACKEND: 'duckdb' });
   const store = await AnalyticsStore.open(config.databasePath);
   const server = createApp({ config, store }).listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -77,7 +77,7 @@ test('batch acknowledgement and duplicates count real stored events', async t =>
   const withinBatch = await f.post(packet([duplicated, duplicated]));
   assert.equal((await withinBatch.json()).accepted, 1);
   const stats = await f.getStats();
-  assert.deepEqual(stats.totals, { events: 3, sessions: 1 });
+  assert.deepEqual(stats.totals, { events: 3, sessions: 1, screenViews: 0, buttonClicks: 2, successfulActions: 0 });
   assert.equal(stats.daily.reduce((sum, day) => sum + day.count, 0), 3);
   assert.deepEqual(stats.byName, [{ name: 'button_click', count: 2 }, { name: 'model_saved', count: 1 }]);
 });
@@ -144,6 +144,115 @@ test('UTC range filters by event time and includes zero days', async t => {
   for (const query of ['0', '91', '-1', '1.5', '7&days=30']) {
     assert.equal((await fetch(`${f.url}/api/v1/stats?days=${query}`, { headers: { Authorization: `Bearer ${f.config.readKey}` } })).status, 400);
   }
+});
+
+test('details separate screen views, button clicks and successful operations without counting retries', async t => {
+  const f = await fixture(t);
+  const sessionId = randomUUID();
+  const events = [
+    event({ sessionId, name: 'screen_view', properties: {} }),
+    event({ sessionId, name: 'screen_view', properties: {} }),
+    event({ sessionId, name: 'screen_view', screen: 'profile', properties: {} }),
+    event({ sessionId, properties: { button: 'open_filters' } }),
+    event({ sessionId, properties: { button: 'open_filters' } }),
+    event({ sessionId, screen: 'add_model', properties: { button: 'save_model' } }),
+    event({ sessionId, screen: 'edit_model', properties: { button: 'save_model' } }),
+    event({ sessionId, name: 'action_success', screen: 'add_model', properties: { action: 'model_saved' } }),
+    event({ sessionId, name: 'action_success', screen: 'edit_model', properties: { action: 'model_updated' } }),
+    event({ sessionId, name: 'custom_event', properties: { button: 'open_filters', action: 'model_saved' } }),
+  ];
+  assert.equal((await f.post(packet(events))).status, 200);
+  const stats = await f.getStats();
+  assert.deepEqual(stats.totals, { events: 10, sessions: 1, screenViews: 3, buttonClicks: 4, successfulActions: 2 });
+  assert.deepEqual(stats.byScreenViews, [{ screen: 'collection', count: 2 }, { screen: 'profile', count: 1 }]);
+  assert.deepEqual(stats.byButton, [
+    { button: 'open_filters', screen: 'collection', count: 2 },
+    { button: 'save_model', screen: 'add_model', count: 1 },
+    { button: 'save_model', screen: 'edit_model', count: 1 },
+  ]);
+  assert.deepEqual(stats.byAction, [
+    { action: 'model_saved', screen: 'add_model', count: 1 },
+    { action: 'model_updated', screen: 'edit_model', count: 1 },
+  ]);
+  assert.equal(stats.byScreen.find(row => row.screen === 'collection').count, 5);
+  assert.equal((await (await f.post(packet(events))).json()).duplicates, 10);
+  assert.deepEqual(await f.getStats(), stats);
+});
+
+test('empty stats and missing or wrongly typed details do not invent button or action names', async t => {
+  const f = await fixture(t);
+  const empty = await f.getStats();
+  assert.deepEqual(empty.totals, { events: 0, sessions: 0, screenViews: 0, buttonClicks: 0, successfulActions: 0 });
+  for (const key of ['byName', 'byScreen', 'byScreenViews', 'byButton', 'byAction']) {
+    assert.deepEqual(empty[key], []);
+    assert.equal(empty.truncated[key], false);
+  }
+  const missingValues = [undefined, null, '', '   ', 7, false];
+  const events = missingValues.flatMap(value => [
+    event({ screen: null, properties: value === undefined ? {} : { button: value } }),
+    event({ name: 'action_success', screen: null, properties: value === undefined ? {} : { action: value } }),
+  ]);
+  events.push(event({ name: 'screen_view', screen: null, properties: {} }));
+  assert.equal((await f.post(packet(events))).status, 200);
+  const stats = await f.getStats();
+  assert.deepEqual(stats.byButton, [{ button: null, screen: null, count: 6 }]);
+  assert.deepEqual(stats.byAction, [{ action: null, screen: null, count: 6 }]);
+  assert.deepEqual(stats.byScreenViews, [{ screen: null, count: 1 }]);
+  assert.equal(stats.totals.events, 13);
+});
+
+test('new breakdowns respect UTC event dates and project scope, including unknown identifiers', async t => {
+  const f = await fixture(t);
+  const now = new Date();
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const records = [
+    event({ occurredAt: new Date(today).toISOString(), properties: { button: "custom ' button" } }),
+    event({ occurredAt: new Date(today).toISOString(), name: 'action_success', properties: { action: '<script>test</script>' } }),
+    event({ occurredAt: new Date(today - 1).toISOString(), properties: { button: 'yesterday' } }),
+    event({ occurredAt: new Date(today - 1).toISOString(), name: 'action_success', properties: { action: 'yesterday' } }),
+    event({ occurredAt: new Date(today - 1).toISOString(), name: 'screen_view', properties: {} }),
+    event({ occurredAt: new Date(today + 86_400_000).toISOString(), properties: { button: 'tomorrow' } }),
+  ];
+  await f.store.ingest(f.config.projectId, records.map(e => ({ ...e, payloadHash: e.eventId })));
+  await f.store.ingest('another-project', [event({ properties: { button: 'other_project' }, payloadHash: 'other-project' })]);
+  const stats = await f.store.stats(f.config.projectId, 1, now);
+  assert.equal(stats.totals.events, 2);
+  assert.deepEqual(stats.byButton, [{ button: "custom ' button", screen: 'collection', count: 1 }]);
+  assert.deepEqual(stats.byAction, [{ action: '<script>test</script>', screen: 'collection', count: 1 }]);
+  assert.deepEqual(stats.byScreenViews, []);
+  const week = await f.store.stats(f.config.projectId, 7, now);
+  assert.equal(week.totals.events, 5);
+  assert.equal(week.byScreenViews[0].count, 1);
+});
+
+test('top 100 groups report truncation while totals still include all groups', async t => {
+  const f = await fixture(t);
+  const sessionId = randomUUID();
+  const records = Array.from({ length: 100 }, (_, i) => [
+    event({ sessionId, properties: { button: `button_${i}` } }),
+    event({ sessionId, name: 'action_success', properties: { action: `action_${i}` } }),
+    event({ sessionId, name: 'screen_view', screen: `screen_${i}`, properties: {} }),
+  ]).flat();
+  for (let i = 0; i < records.length; i += 100) assert.equal((await f.post(packet(records.slice(i, i + 100)))).status, 200);
+  const full = await f.getStats();
+  assert.equal(full.breakdownLimit, 100);
+  for (const key of ['byButton', 'byAction', 'byScreenViews']) {
+    assert.equal(full[key].length, 100);
+    assert.equal(full.truncated[key], false);
+  }
+  assert.equal((await f.post(packet([
+    event({ sessionId, properties: { button: 'extra_button' } }),
+    event({ sessionId, name: 'action_success', properties: { action: 'extra_action' } }),
+    event({ sessionId, name: 'screen_view', screen: 'extra_screen', properties: {} }),
+  ]))).status, 200);
+  const limited = await f.getStats();
+  assert.deepEqual(limited.totals, { events: 303, sessions: 1, screenViews: 101, buttonClicks: 101, successfulActions: 101 });
+  for (const key of ['byButton', 'byAction', 'byScreenViews']) {
+    assert.equal(limited[key].length, 100);
+    assert.equal(limited.truncated[key], true);
+  }
+  assert.equal(limited.truncated.byName, false);
+  assert.equal(limited.daily.reduce((sum, day) => sum + day.count, 0), 303);
 });
 
 test('committed data and deduplication survive closing and reopening the database', async t => {
@@ -214,4 +323,19 @@ test('manual diagnostic command sends a real event and retries the same packet',
   assert.equal(retry.duplicates, 1);
   assert.deepEqual(first.acknowledgedEventIds, retry.acknowledgedEventIds);
   assert.equal((await f.getStats()).totals.events, 1);
+});
+
+test('preserved DuckDB backend supplies recent events to the shared dashboard API', async t => {
+  const f = await fixture(t);
+  const source = event({ properties: { button: 'save_model' } });
+  assert.equal((await f.post(packet([source]))).status, 200);
+  const response = await fetch(f.url + '/api/v1/events/recent', { headers: { Authorization: `Bearer ${f.config.readKey}` } });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.events.length, 1);
+  assert.equal(result.events[0].eventId, source.eventId);
+  assert.equal(result.events[0].occurredAt, source.occurredAt);
+  assert.deepEqual(result.events[0].properties, source.properties);
+  assert.ok(Number.isFinite(Date.parse(result.events[0].receivedAt)));
+  assert.equal(Object.hasOwn(result.events[0], 'payloadHash'), false);
 });
