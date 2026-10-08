@@ -54,6 +54,8 @@ DuckDB выбран для последующего хранения анали�
 
 Репозиторий: https://github.com/Semiys/UlsaTrackerStyle-SDK
 
+Pull Request: https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/2
+
 Образ: https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk
 
 ```bash

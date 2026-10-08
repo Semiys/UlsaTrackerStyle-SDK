@@ -80,6 +80,12 @@ docker buildx build --builder desktop-linux --platform linux/amd64,linux/arm64 -
 
 **`semiys/ulsatrackerstyle-sdk:0.0.1`** содержит `linux/amd64` и `linux/arm64`. 04.10.2026 проверены манифест, скачивание без авторизации и обе платформы. Digest индекса: `sha256:e2c58257bbffeea835d8889447d2f97aa3587cf687d4eb3da18bca39e04644e6`.
 
+Репозиторий: https://github.com/Semiys/UlsaTrackerStyle-SDK
+
+Pull Request: https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/2
+
+Образ: https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk
+
 Команды для проверки опубликованной ЛР1 (каждая вводится одной строкой):
 
 ```bash
