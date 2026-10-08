@@ -80,13 +80,20 @@ docker buildx build --builder desktop-linux --platform linux/amd64,linux/arm64 -
 
 **`semiys/ulsatrackerstyle-sdk:0.0.1`** содержит `linux/amd64` и `linux/arm64`. 04.10.2026 проверены манифест, скачивание без авторизации и обе платформы. Digest индекса: `sha256:e2c58257bbffeea835d8889447d2f97aa3587cf687d4eb3da18bca39e04644e6`.
 
-Запуск опубликованной ЛР1:
+Репозиторий: https://github.com/Semiys/UlsaTrackerStyle-SDK
+
+Pull Request: https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/2
+
+Образ: https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk
+
+Команды для проверки опубликованной ЛР1 (каждая вводится одной строкой):
 
 ```bash
 docker pull semiys/ulsatrackerstyle-sdk:0.0.1
-docker run --rm -d -p 127.0.0.1:8080-8180:8080 --name ulsa-tracker-lab1 semiys/ulsatrackerstyle-sdk:0.0.1
-docker port ulsa-tracker-lab1 8080/tcp
+docker run --rm -p 8080:8080 semiys/ulsatrackerstyle-sdk:0.0.1
 ```
+
+Откройте http://localhost:8080. Сервер слушает 8080 внутри контейнера; Docker публикует один порт 8080 компьютера. Остановка — Ctrl+C. Порт 8080 должен быть свободен. Проверка выполнена на Intel с опубликованным образом; снимок для отчёта сделан после этого запуска.
 
 Отчёт ЛР1 описывает 0.0.1. Ссылка на актуальный Google Docs, оформленный пользователем, — в [LAB1.md](docs/LAB1.md).
 
