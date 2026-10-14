@@ -92,7 +92,7 @@ docker exec ulsa-tracker-duckdb node src/show-access.js
 
 Перед публикацией выполните проверки. Публикация заменяет содержимое указанного тега в Docker Hub.
 
-Для ЛР3 подготовлен новый тег; эта команда ещё не выполнялась:
+Образ ЛР3 опубликован 14.10.2026 следующей командой:
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 -t semiys/ulsatrackerstyle-sdk:0.0.3 --push .
@@ -115,12 +115,12 @@ docker buildx build --platform linux/amd64,linux/arm64 --target lab2 -t semiys/u
 Проверка опубликованных платформ:
 
 ```bash
-docker buildx imagetools inspect semiys/ulsatrackerstyle-sdk:0.0.2
+docker buildx imagetools inspect semiys/ulsatrackerstyle-sdk:0.0.3
 ```
 
 В одном теге должны присутствовать `linux/amd64` и `linux/arm64`. Дополнительные аттестации `unknown/unknown` не заменяют их. Не отправляйте образ одной платформы поверх общего тега. На Docker Desktop с containerd image store Buildx также может загрузить обе платформы локально с `--load`.
 
-Для проверки опубликованного образа используйте точные команды `docker pull` и `docker run` из README. Запуск выполняется на Intel; ARM можно дополнительно проверить на ARM-хосте или через эмуляцию, указав это в результатах.
+Для ЛР3 используйте блок клонирования ветки `lab3` и запуска Compose из README. Команды `docker pull` и `docker run` в разделах ЛР1/ЛР2 относятся к прежним работам с одним контейнером. Запуск ЛР3 выполнен на Intel; ARM-приложение дополнительно проверено через эмуляцию с базой на Intel.
 
 ## Описание Docker Hub
 
