@@ -4,7 +4,7 @@
     <p class="eyebrow">События → статистика</p>
     <h1><%= product %></h1>
     <p class="description">SDK отмечает открытия экранов, нажатия кнопок и успешные действия. Сервер сохраняет события, а панель показывает, как используется приложение.</p>
-    <p class="version">Сервер <%= serverVersion %> · Kotlin SDK 0.2.0</p>
+    <p class="version"><% if (demoMode) { %>Версия <%= labImageVersion %> · <% } %>Сервер <%= serverVersion %> · Kotlin SDK 0.2.0</p>
     <p class="status">Разработка продолжается</p>
     <div class="page-actions"><a class="button" href="/events/new">Отправить событие</a><a class="button secondary" href="/dashboard">Открыть статистику</a></div>
   </section>

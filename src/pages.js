@@ -18,7 +18,7 @@ export function pageRouter({ config, store }) {
     res.locals.serverVersion = SERVER_VERSION;
     res.locals.labImageVersion = LAB_IMAGE_VERSION;
     res.locals.demoMode = config.demoMode === true;
-    res.locals.storageName = config.storageBackend === 'duckdb' ? 'DuckDB' : 'JSON';
+    res.locals.storageName = ({ duckdb: 'DuckDB', json: 'JSON', clickhouse: 'ClickHouse' })[config.storageBackend];
     res.locals.eventLabel = value => knownNames.get(value) ?? value;
     res.locals.dateLabel = value => new Date(value).toLocaleString('ru-RU', { timeZone: 'UTC' });
     next();

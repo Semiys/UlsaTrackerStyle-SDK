@@ -5,10 +5,19 @@ import { DEMO_INGEST_KEY, DEMO_READ_KEY } from './demo.js';
 
 export async function loadConfig(env = process.env) {
   const storageBackend = env.STORAGE_BACKEND ?? 'json';
-  if (!['json', 'duckdb'].includes(storageBackend)) throw new Error('STORAGE_BACKEND must be json or duckdb');
+  if (!['json', 'duckdb', 'clickhouse'].includes(storageBackend)) throw new Error('STORAGE_BACKEND must be json or duckdb or clickhouse');
   if (env.DEMO_MODE !== undefined && !['0', '1'].includes(env.DEMO_MODE)) throw new Error('DEMO_MODE must be 0 or 1');
   const demoMode = env.DEMO_MODE === '1';
-  if (demoMode && storageBackend !== 'json') throw new Error('The lab demo requires JSON storage');
+  if (demoMode && storageBackend === 'duckdb') throw new Error('The lab demo requires JSON or ClickHouse storage');
+  let clickhouse;
+  if (storageBackend === 'clickhouse') {
+    const url = new URL(env.DATABASE_URL ?? 'http://db:8123');
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid DATABASE_URL');
+    if (!env.DATABASE_USER || !env.DATABASE_PASSWORD || !/^[a-z][a-z0-9_]{0,63}$/.test(env.DATABASE_NAME ?? '')) throw new Error('DATABASE_USER, DATABASE_PASSWORD and DATABASE_NAME are required');
+    clickhouse = { url: url.href, username: env.DATABASE_USER, password: env.DATABASE_PASSWORD, database: env.DATABASE_NAME };
+  }
+  const demoProject = storageBackend === 'clickhouse' ? 'lab3-demo' : 'lab2-demo';
+  const demoName = storageBackend === 'clickhouse' ? 'ЛР3 · Дом Коллекционера' : 'ЛР2 · Дом Коллекционера';
   const dataDir = resolve(env.DATA_DIR ?? './data');
   await mkdir(dataDir, { recursive: true, mode: 0o700 });
   const accessPath = join(dataDir, 'access.json');
@@ -18,8 +27,8 @@ export async function loadConfig(env = process.env) {
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
     access = {
-      projectId: env.PROJECT_ID ?? (demoMode ? 'lab2-demo' : 'dom-collection'),
-      projectName: env.PROJECT_NAME ?? (demoMode ? 'ЛР2 · Дом Коллекционера' : 'Дом Коллекционера'),
+      projectId: env.PROJECT_ID ?? (demoMode ? demoProject : 'dom-collection'),
+      projectName: env.PROJECT_NAME ?? (demoMode ? demoName : 'Дом Коллекционера'),
       ingestKey: demoMode ? DEMO_INGEST_KEY : randomBytes(32).toString('hex'),
       readKey: demoMode ? DEMO_READ_KEY : randomBytes(32).toString('hex'),
     };
@@ -37,9 +46,9 @@ export async function loadConfig(env = process.env) {
       || access.ingestKey === access.readKey) {
     throw new Error('Invalid data/access.json configuration');
   }
-  if (demoMode && (access.ingestKey !== DEMO_INGEST_KEY || access.readKey !== DEMO_READ_KEY || access.projectId !== 'lab2-demo')) {
+  if (demoMode && (access.ingestKey !== DEMO_INGEST_KEY || access.readKey !== DEMO_READ_KEY || access.projectId !== demoProject)) {
     throw new Error('Use a separate empty volume for the teaching demo');
   }
-  return { ...access, demoMode, storageBackend, dataDir,
+  return { ...access, demoMode, storageBackend, dataDir, clickhouse,
     jsonPath: join(dataDir, 'events.json'), databasePath: join(dataDir, 'analytics.duckdb') };
 }

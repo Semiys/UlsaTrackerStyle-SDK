@@ -1,0 +1,9 @@
+services:
+  app:
+    image: ulsatrackerstyle-sdk:lab3-test-0.5.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: lab3-test
+    command: ["npm", "run", "test:lab3"]
+    mem_limit: 512m
