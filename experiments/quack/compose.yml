@@ -1,0 +1,36 @@
+name: mispisit-sarantsev-quack-probe
+
+services:
+  app:
+    image: ulsatrackerstyle-sdk:quack-probe-0.1.0
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: dependencies
+    command: ["node", "/app/experiment/probe.mjs", "write"]
+    environment:
+      DATABASE_URI: quack:db:9494
+      DATABASE_TOKEN: app-demo
+    volumes:
+      - ./:/app/experiment:ro
+      - ../../src:/app/src:ro
+    depends_on:
+      - db
+    mem_limit: 512m
+    cpus: 1
+  db:
+    image: duckdb/duckdb:1.5.6
+    command: ["/duckdb", "/var/lib/duckdb/analytics.duckdb", "-init", "/bootstrap.sql"]
+    environment:
+      DATABASE_TOKEN: app-demo
+      HOME: /var/lib/duckdb
+    volumes:
+      - dbdata:/var/lib/duckdb
+      - ./bootstrap.sql:/bootstrap.sql:ro
+    stdin_open: true
+    tty: true
+    mem_limit: 256m
+    cpus: 1
+
+volumes:
+  dbdata:

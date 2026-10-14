@@ -1,0 +1,41 @@
+name: mispisit-sarantsev
+
+services:
+  app:
+    image: semiys/ulsatrackerstyle-sdk:0.0.3
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      STORAGE_BACKEND: clickhouse
+      DEMO_MODE: "1"
+      LAB_IMAGE_VERSION: 0.0.3
+      DATABASE_URL: http://db:8123
+      DATABASE_USER: app
+      DATABASE_PASSWORD: app
+      DATABASE_NAME: app
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 256m
+    cpus: 1
+  db:
+    image: clickhouse/clickhouse-server:26.8.26.12
+    environment:
+      CLICKHOUSE_DB: app
+      CLICKHOUSE_USER: app
+      CLICKHOUSE_PASSWORD: app
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - dbdata:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user \"$$CLICKHOUSE_USER\" --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1'"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    mem_limit: 1g
+    cpus: 2
+
+volumes:
+  dbdata:
