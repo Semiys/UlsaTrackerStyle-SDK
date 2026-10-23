@@ -47,7 +47,7 @@ services:
       - dbdata:/var/lib/clickhouse
       - ./grafana/clickhouse-users.xml:/etc/clickhouse-server/users.d/dashboard.xml:ro
     healthcheck:
-      test: ["CMD-SHELL", "clickhouse-client --user \"$$CLICKHOUSE_USER\" --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1'"]
+      test: ["CMD-SHELL", "clickhouse-client --host db --user \"$$CLICKHOUSE_USER\" --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1'"]
       interval: 2s
       timeout: 3s
       retries: 30

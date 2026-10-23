@@ -4,7 +4,7 @@
 
 ## Текущий выпуск ЛР4
 
-Сервер 0.7.0, образ 0.0.4. Локальная сборка: `docker build -t semiys/ulsatrackerstyle-sdk:0.0.4 .`. Изолированный набор из 38 проверок запускается по [инструкции ЛР4](LAB4.md#проверки). Публикация обеих архитектур:
+Сервер 0.7.1, образ 0.0.4. Локальная сборка: `docker build -t semiys/ulsatrackerstyle-sdk:0.0.4 .`. Изолированный набор из 40 проверок запускается по [инструкции ЛР4](LAB4.md#проверки). Публикация обеих архитектур:
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 -t semiys/ulsatrackerstyle-sdk:0.0.4 --push .

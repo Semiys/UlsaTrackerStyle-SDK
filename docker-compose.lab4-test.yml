@@ -9,7 +9,7 @@ services:
     environment:
       GF_SERVER_ROOT_URL: http://localhost:13000/grafana/
   checks:
-    image: ulsatrackerstyle-sdk:lab4-test-0.7.0
+    image: ulsatrackerstyle-sdk:lab4-test-0.7.1
     build:
       context: .
       target: lab4-test

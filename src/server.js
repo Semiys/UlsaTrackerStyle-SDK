@@ -1,5 +1,5 @@
 import { loadConfig } from './config.js';
-import { openStore } from './storage.js';
+import { openStoreAtStartup } from './startup.js';
 import { createApp } from './app.js';
 import { SERVER_VERSION } from './version.js';
 import { AccountStore } from './accounts.js';
@@ -12,7 +12,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 
 const config = await loadConfig();
-const store = await openStore(config);
+const store = await openStoreAtStartup(config);
 const accounts = config.consoleEnabled ? new AccountStore(config.accountsPath) : null;
 const grafana = accounts && config.dashboardProvider === 'grafana' ? new GrafanaCabinet({ config, accounts, store }) : null;
 const app = createApp({ config, store, accounts, grafana });
