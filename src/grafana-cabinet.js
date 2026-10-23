@@ -131,7 +131,7 @@ export class GrafanaCabinet {
           // Grafana cookies/credentials are never exposed through the gateway.
           res.set('Cache-Control', 'private, no-store');
           res.removeHeader('Content-Security-Policy');
-          res.set('Content-Security-Policy', "frame-ancestors 'self'");
+          res.set('Content-Security-Policy', `frame-ancestors 'self' ${new URL(this.config.publicUrl).origin}`);
           upstream.on('error', () => res.destroy());
           upstream.pipe(res);
         });
