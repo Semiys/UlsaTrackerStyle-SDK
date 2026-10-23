@@ -1,0 +1,14 @@
+<%- include('../partials/head', { title: 'Мои проекты' }) %>
+<main class="console-main">
+  <div class="console-heading"><div><p class="eyebrow">Кабинет разработчика</p><h1>Мои проекты</h1><p class="muted"><%= currentUser.name %>, объединяйте приложения одного продукта в проект.</p></div>
+    <form method="post" action="/logout"><input type="hidden" name="csrfToken" value="<%= consoleCsrf %>"><button class="button secondary" type="submit">Выйти</button></form>
+  </div>
+  <% if (!projects.length) { %><section class="console-empty"><h2>Начните с первого проекта</h2><p class="muted">Например, «Дом Коллекционера». Затем добавьте Android-приложение или сайт и получите ключ отправки событий.</p></section><% } %>
+  <div class="console-cards"><% for (const project of projects) { %>
+    <a class="console-card" href="/console/projects/<%= project.id %>"><p class="eyebrow"><%= project.archived ? 'В архиве' : 'Проект' %></p><h2><%= project.name %></h2><p class="muted">Приложений: <%= project.applications %></p><span class="console-card-action">Открыть проект →</span></a>
+  <% } %></div>
+  <section class="console-section"><h2>Новый проект</h2><form method="post" action="/console/projects" class="console-inline-form">
+    <input type="hidden" name="csrfToken" value="<%= consoleCsrf %>"><label>Название проекта<input name="name" maxlength="100" placeholder="Дом Коллекционера" required></label><button class="button" type="submit">Создать проект</button>
+  </form></section>
+</main>
+<%- include('../partials/foot') %>

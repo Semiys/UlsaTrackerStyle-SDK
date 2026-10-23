@@ -1,0 +1,4 @@
+<%- include('../partials/head', { title: 'Тестовое событие' }) %>
+<main class="narrow console-main"><a class="button secondary" href="/console/apps/<%= application.id %>">← Подключение</a><p class="eyebrow"><%= application.name %></p><h1>Тестовое событие</h1><p class="muted">Создаётся настоящая запись с пометкой source: console_test. Она останется в статистике этого приложения.</p>
+  <form method="post" action="/console/apps/<%= application.id %>/test" class="console-form"><input type="hidden" name="csrfToken" value="<%= consoleCsrf %>"><label>Событие<select name="name"><option value="screen_view">Открытие экрана</option><option value="button_click">Нажатие кнопки</option><option value="action_success">Успешное действие</option></select></label><label>Экран<input name="screen" value="sdk_test" pattern="[a-z][a-z0-9_]{0,63}" required></label><button class="button" type="submit">Отправить и открыть статистику</button></form>
+</main><%- include('../partials/foot') %>

@@ -10,8 +10,9 @@
   <link rel="stylesheet" href="/dashboard.css">
   <link rel="stylesheet" href="/pages.css">
   <link rel="stylesheet" href="/dropdowns.css">
+  <% if (consoleEnabled) { %><link rel="stylesheet" href="/console.css"><script src="/console.js" defer></script><% } %>
   <script src="/dropdowns.js" defer></script>
-  <% if (active === 'dashboard') { %><script src="/dashboard.js" defer></script><% } %>
+  <% if (active === 'dashboard' || typeof privateDashboardUrl === 'string') { %><script src="/<%= dashboardProvider === 'grafana' ? 'dashboard' : 'statistics' %>.js" defer></script><% } %>
 </head>
 <body class="dashboard-page" data-demo-read-key="<%= typeof demoReadKey === 'string' ? demoReadKey : '' %>">
 <div class="layout">
@@ -21,6 +22,7 @@
       <% for (const item of [{ href: '/', label: 'Главная', key: 'home' }, { href: '/events/new', label: 'Отправить событие', key: 'form' }, { href: '/dashboard', label: 'Статистика', key: 'dashboard' }, { href: '/error', label: 'Пример отказа', key: 'error' }]) { %>
         <a class="button secondary" href="<%= item.href %>" <% if (active === item.key) { %>aria-current="page"<% } %>><%= item.label %></a>
       <% } %>
+      <% if (consoleEnabled) { %><a class="button secondary" href="<%= currentUser ? '/console' : '/login' %>" <% if (active === 'console') { %>aria-current="page"<% } %>><%= currentUser ? 'Мой кабинет' : 'Войти' %></a><% } %>
     </nav>
     <div class="theme-control"><label for="site-theme">Тема</label>
       <select id="site-theme">

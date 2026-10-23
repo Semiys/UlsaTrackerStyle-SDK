@@ -1,0 +1,5 @@
+<%- include('../partials/head', { title: 'Проверка JavaScript SDK' }) %>
+<main class="narrow console-main"><p class="eyebrow">JavaScript SDK</p><h1>Проверить отправку с сайта</h1><p class="muted">Создайте Web-приложение с origin этого сайта. Вставьте его ключ, подключитесь и нажмите тестовую кнопку. События отправит настоящая браузерная библиотека.</p>
+  <form id="sdk-demo-form" class="console-form"><label>Адрес сервиса<input name="endpoint" value="<%= endpoint %>" required></label><label>Ключ отправки<input name="ingestKey" autocomplete="off" spellcheck="false" required></label><button class="button" type="submit">Подключить SDK</button></form>
+  <div class="page-actions"><button class="button secondary" id="sdk-demo-click" disabled>Тестовое нажатие</button><button class="button secondary" id="sdk-demo-stop" disabled>Выключить сбор и очистить очередь</button></div><p class="success-message" id="sdk-demo-status" role="status">SDK ещё не подключена.</p>
+</main><script src="/sdk/ulsa-tracker.js" defer></script><script src="/sdk-demo.js" defer></script><%- include('../partials/foot') %>

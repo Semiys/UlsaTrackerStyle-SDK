@@ -1,0 +1,7 @@
+<%- include('../partials/head', { title: application.name + ' — статистика' }) %>
+<main class="dashboard-main grafana-main">
+  <section class="stats-header"><div><p class="eyebrow"><%= application.project_name %></p><h1><%= application.name %></h1><p class="muted">Статистика приложения · UTC</p></div><div class="controls"><a class="button secondary" href="/console/apps/<%= application.id %>">Подключение</a><button class="button secondary" id="refresh-grafana" type="button">Обновить панель</button><a class="button secondary" id="open-grafana" href="<%= privateDashboardUrl %>?theme=light" target="_blank" rel="noopener">На весь экран</a></div></section>
+  <p class="muted small">Выберите период в панели. Сессии с событиями не равны числу уникальных пользователей.</p><p id="grafana-status" class="muted small" role="status">Подготавливаем панель приложения…</p>
+  <div class="grafana-frame-wrap"><iframe id="grafana-frame" class="grafana-frame" data-dashboard-url="<%= privateDashboardUrl %>" title="Статистика приложения <%= application.name %>"></iframe></div>
+</main>
+<%- include('../partials/foot') %>

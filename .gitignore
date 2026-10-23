@@ -30,3 +30,8 @@ data/
 # Operating systems
 .DS_Store
 Thumbs.db
+
+# Account metadata
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

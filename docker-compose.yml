@@ -2,18 +2,35 @@ name: mispisit-sarantsev
 
 services:
   app:
-    image: semiys/ulsatrackerstyle-sdk:0.0.3
+    image: semiys/ulsatrackerstyle-sdk:0.0.4
     ports:
       - "8080:8080"
+      - "3000:3000"
     environment:
       PORT: "8080"
+      CONSOLE_ENABLED: "1"
+      PUBLIC_URL: http://localhost:8080
+      GRAFANA_INTERNAL_URL: http://dashboard:3000
+      GRAFANA_ADMIN_USER: app
+      GRAFANA_ADMIN_PASSWORD: app
       STORAGE_BACKEND: clickhouse
       DEMO_MODE: "1"
-      LAB_IMAGE_VERSION: 0.0.3
+      LAB_IMAGE_VERSION: 0.0.4
       DATABASE_URL: http://db:8123
       DATABASE_USER: app
       DATABASE_PASSWORD: app
       DATABASE_NAME: app
+      DASHBOARD_PROVIDER: grafana
+      DASHBOARD_PUBLIC_URL: http://localhost:3000
+    volumes:
+      - appdata:/app/data
+      - grafanaplugins4112:/opt/ulsatracker/grafana-plugins:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     depends_on:
       db:
         condition: service_healthy
@@ -28,6 +45,7 @@ services:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     volumes:
       - dbdata:/var/lib/clickhouse
+      - ./grafana/clickhouse-users.xml:/etc/clickhouse-server/users.d/dashboard.xml:ro
     healthcheck:
       test: ["CMD-SHELL", "clickhouse-client --user \"$$CLICKHOUSE_USER\" --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1'"]
       interval: 2s
@@ -37,5 +55,50 @@ services:
     mem_limit: 1g
     cpus: 2
 
+  dashboard:
+    image: grafana/grafana:11.4.0
+    expose: ["3000"]
+    environment:
+      GF_SERVER_ROOT_URL: http://localhost:3000/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_LIVE_MAX_CONNECTIONS: "0"
+      GF_SECURITY_ADMIN_USER: app
+      GF_SECURITY_ADMIN_PASSWORD: app
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_AUTH_BASIC_ENABLED: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_DEFAULT_THEME: light
+      GF_USERS_DEFAULT_LANGUAGE: ru-RU
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/ulsatracker.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_PLUGINS_PUBLIC_KEY_RETRIEVAL_DISABLED: "true"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_LOG_LEVEL: warn
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - grafanaplugins4112:/var/lib/grafana/plugins:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      app:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/grafana/api/health >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+    mem_limit: 384m
+    cpus: 1
+
 volumes:
+  appdata:
+  grafanadata:
+  grafanaplugins4112:
   dbdata:

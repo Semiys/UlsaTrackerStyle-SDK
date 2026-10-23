@@ -31,12 +31,6 @@ input, select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px s
 .metrics-note { margin-bottom: 20px; }
 .tables .panel { min-width: 0; }
 .metric { font-size: 44px; font-weight: 700; letter-spacing: -.04em; }
-.chart-panel { margin-bottom: 20px; }
-.chart-scroll { overflow-x: auto; }
-#daily-chart { display: block; width: 100%; min-width: 540px; height: auto; }
-.chart-bar { fill: var(--accent); }
-.chart-zero { fill: var(--border); }
-.chart-label { fill: var(--muted); font: 12px system-ui, sans-serif; }
 .table-scroll { max-height: 460px; overflow: auto; margin-top: 12px; }
 .table-scroll:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -59,3 +53,8 @@ footer { padding: 32px 0 8px; }
   .stats-header { align-items: flex-start; }
   .controls { width: 100%; }
 }
+
+.grafana-main .stats-header { margin-bottom: 16px; }
+.grafana-frame-wrap { margin-top: 16px; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); }
+.grafana-frame { display: block; width: 100%; height: 1720px; border: 0; }
+@media (max-width: 700px) { .grafana-frame { height: 2400px; } .grafana-main .controls { width: 100%; } }
