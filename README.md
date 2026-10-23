@@ -23,6 +23,8 @@
 
 Ветка: lab4
 
+Pull Request: https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/4
+
 Образ: semiys/ulsatrackerstyle-sdk:0.0.4
 
 Страница образа: https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk

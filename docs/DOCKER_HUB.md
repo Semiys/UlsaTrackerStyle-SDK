@@ -6,26 +6,25 @@
 
 | Тег | Работа | Содержимое |
 |---|---|---|
+| `0.0.4` | ЛР4 | Сервер 0.7.0: кабинет, ClickHouse, Grafana и JavaScript SDK |
 | `0.0.3` | ЛР3 | Сервер 0.5.0: прежние функции, отдельный ClickHouse, постоянное хранение |
 | `0.0.2` | ЛР2 | Сервер 0.4.1: форма события, статистика, объяснение отказа; Express, EJS и JSON |
 | `0.0.1` | ЛР1 | Первая страница: название, описание, версия и статус разработки |
 
-Все три тега содержат **linux/amd64 и linux/arm64**. Docker выбирает архитектуру автоматически. На Windows/macOS нужен Docker Desktop с Linux-контейнерами, на Linux — Docker Engine. Node.js и зависимости находятся внутри образа.
+Все четыре тега содержат **linux/amd64 и linux/arm64**. Docker выбирает архитектуру автоматически. На Windows/macOS нужен Docker Desktop с Linux-контейнерами, на Linux — Docker Engine. Node.js и зависимости находятся внутри образа.
 
-## Запуск ЛР3
+## Запуск ЛР4
 
 Репозиторий: https://github.com/Semiys/UlsaTrackerStyle-SDK
 
-Ветка: lab3
+Ветка: lab4
 
-Pull Request: https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/3
+Pull Request: https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/4
 
-Образ: semiys/ulsatrackerstyle-sdk:0.0.3
-
-Страница образа: https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk
+Образ: semiys/ulsatrackerstyle-sdk:0.0.4
 
 ```bash
-git clone -b lab3 https://github.com/Semiys/UlsaTrackerStyle-SDK
+git clone -b lab4 https://github.com/Semiys/UlsaTrackerStyle-SDK
 ```
 
 ```bash
@@ -33,22 +32,14 @@ cd UlsaTrackerStyle-SDK
 ```
 
 ```bash
-docker compose up -d
+docker compose up -d --wait
 ```
 
-Откройте [http://localhost:8080](http://localhost:8080). Порт 8080 должен быть свободен. Compose скачивает готовое приложение и официальный ClickHouse 26.8.26.12. База недоступна через порт компьютера, события лежат в именованном томе `dbdata`. Первый запуск с новым томом создаёт пустую схему.
+Приложение: http://localhost:8080. Готовая демонстрационная Grafana: http://localhost:3000. Нужны свободные порты 8080/3000; сборка, Node.js, SQL и APK для показа не требуются. Новый том начинается с пустой статистики. Создайте событие через форму и обновите панель. Вход нужен только для своих проектов; учебный показ открыт без регистрации.
 
-Для проверки сохранности создайте событие через форму, затем выполните:
+События хранятся в dbdata, кабинет — в appdata, настройки Grafana — в grafanadata. Остановка `docker compose down` сохраняет тома; не добавляйте `-v`. Учебные HTTP и app/app для публичного размещения требуют замены. Один процесс приёма; горизонтальное масштабирование пока не реализовано.
 
-```bash
-docker compose down
-```
-
-```bash
-docker compose up -d
-```
-
-Событие остаётся в статистике. Не добавляйте `-v`: этот флаг удаляет данные. Текущий приём событий рассчитан на один процесс приложения.
+ЛР3 сохранена в ветке lab3 и теге 0.0.3; её Compose содержит два сервиса. Старые теги не перезаписываются.
 
 ## Запуск ЛР2
 
@@ -125,7 +116,7 @@ Pull Request ЛР2: [https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/1](http
 
 ## Состояние SDK и хранения
 
-Kotlin SDK 0.2.0 реализована для Android и JVM: постоянная очередь, пакетная отправка, повторы и подтверждения. Демонстрационный APK имеет версию 1.2 и передаётся отдельно. iOS и JavaScript SDK запланированы.
+Kotlin SDK 0.2.0 реализована для Android и JVM: постоянная очередь, пакетная отправка, повторы и подтверждения. Демонстрационный APK 1.3 передаётся отдельно. JavaScript SDK 0.1.0 доступна в выпуске 0.0.4 как script/ES module/локальный пакет; iOS запланирован. Публикация Maven/npm пока не выполнена.
 
 ЛР2 хранит события в JSON: предел 10 000 событий или 16 МиБ. Реализация DuckDB сохранена в исходниках для следующих этапов; пакет DuckDB в образ ЛР2 не включён. Фотографии, содержимое коллекции, пользовательский ввод и рекламные ID SDK не собирает.
 
