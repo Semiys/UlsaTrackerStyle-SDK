@@ -12,6 +12,8 @@ COPY src ./src
 COPY test ./test
 COPY public ./public
 COPY views ./views
+COPY grafana ./grafana
+COPY sdk/js ./sdk/js
 CMD ["npm", "test"]
 
 FROM lab-dependencies AS lab2-test

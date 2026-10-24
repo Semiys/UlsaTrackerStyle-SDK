@@ -19,10 +19,10 @@ async function json(url, init) {
   assert.equal(response.status, 200, JSON.stringify(data));
   return data;
 }
-async function query(target) {
+async function query(target, range = {}) {
   const data = await json(grafanaUrl + '/api/ds/query', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: String(Date.now() - 7 * 86_400_000), to: String(Date.now() + 60_000),
+    body: JSON.stringify({ from: String(range.from ?? Date.now() - 7 * 86_400_000), to: String(range.to ?? Date.now() + 60_000),
       queries: [{ ...target, refId: 'A', intervalMs: 10_000, maxDataPoints: 1000 }] }),
   });
   assert.ok(data.results?.A, JSON.stringify(data));
@@ -121,4 +121,37 @@ test('the dashboard database user cannot write or view another project', integra
     query_params: { id: eventId }, format: 'JSONEachRow' })).json();
   assert.equal(Number(rows[0].n), 0);
   await assert.rejects(reader.command({ query: 'INSERT INTO app.events SELECT * FROM app.events WHERE 0' }), /readonly|read.only|privilege|permission|not enough/i);
+});
+
+
+test('daily graph fills the selected UTC days and its four totals match the counters', integration, async () => {
+  const today = new Date();
+  const midnight = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const range = { from: midnight - 6 * 86_400_000, to: Date.now() };
+  const [frame] = await query(definition.panels.find(p => p.id === 6).targets[0], range);
+  const values = frame.data.values;
+  assert.equal(values[0].length, 7);
+  assert.deepEqual(values[0].map(Number), Array.from({ length: 7 }, (_, i) => range.from + i * 86_400_000));
+  for (const [name, counterId] of [['Все события', 1], ['Открытия экранов', 3], ['Нажатия кнопок', 4], ['Успешные действия', 5]]) {
+    const index = frame.schema.fields.findIndex(field => field.name === name);
+    assert.ok(index > 0, name);
+    assert.ok(values[index].every(value => Number.isInteger(Number(value)) && Number(value) >= 0), name);
+    const [counter] = await query(definition.panels.find(p => p.id === counterId).targets[0], range);
+    assert.equal(values[index].reduce((sum, value) => sum + Number(value), 0), Number(counter.data.values[0][0]), name);
+  }
+});
+
+test('an empty historical period contains seven zero days, not an invented event or a missing series', integration, async () => {
+  const from = Date.UTC(2010, 0, 1);
+  const [frame] = await query(definition.panels.find(p => p.id === 6).targets[0], { from, to: from + 7 * 86_400_000 - 1 });
+  assert.equal(frame.data.values[0].length, 7);
+  for (const values of frame.data.values.slice(1)) assert.deepEqual(values.map(Number), Array(7).fill(0));
+});
+
+
+test('two simultaneous dashboard refreshes finish without ClickHouse memory errors', integration, async () => {
+  const panels = [...definition.panels, ...definition.panels];
+  const results = await Promise.all(panels.map(panel => query(panel.targets[0])));
+  assert.equal(results.length, 28);
+  assert.ok(results.every(frames => Array.isArray(frames)));
 });

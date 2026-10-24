@@ -3,12 +3,22 @@
 <% } else { %>
 <%- include('partials/head', { title: 'Статистика' }) %>
 <main class="dashboard-main grafana-main">
-  <% if (saved) { %><p class="success-message" role="status">Событие сохранено. Панель обновится автоматически в течение 10 секунд.</p><% } %>
+  <% if (saved) { %><p class="success-message" role="status">Событие сохранено. Панель обновится автоматически в течение 30 секунд.</p><% } %>
   <section class="stats-header">
     <div><p class="eyebrow">Ваш проект</p><h1>Статистика приложения</h1><p class="muted"><%= projectName %> · время UTC</p></div>
     <div class="controls"><button class="button secondary" id="refresh-grafana" type="button">Обновить панель</button><a class="button secondary" id="open-grafana" href="<%= dashboardUrl %>?theme=light" target="_blank" rel="noopener noreferrer">На весь экран</a></div>
   </section>
-  <p class="muted small">Выберите период в панели. Сессии с событиями не равны числу уникальных пользователей.</p>
+  <section class="analytics-toolbar" aria-label="Настройки статистики">
+    <div class="analytics-period" role="group" aria-label="Период статистики">
+      <span class="small muted">Период</span>
+      <button class="button secondary" type="button" data-analytics-days="7" aria-pressed="true">7 дней</button>
+      <button class="button secondary" type="button" data-analytics-days="30" aria-pressed="false">30 дней</button>
+      <button class="button secondary" type="button" data-analytics-days="90" aria-pressed="false">90 дней</button>
+    </div>
+    <p class="muted small">Группировка по дням · UTC · обновление каждые 30 с</p>
+  </section>
+  <p class="muted small" id="comparison-period-note">Сравнение с предыдущими 7 календарными днями; последний день — до того же времени UTC. Карта активности суммирует события за выбранный период.</p>
+  <p class="muted small">Наведите на точку, чтобы увидеть значения. Нажмите название ряда в легенде, чтобы выделить его. Сессии с событиями не равны числу уникальных пользователей.</p>
   <p class="muted small" id="grafana-status" role="status">Загружается панель статистики…</p>
   <div class="grafana-frame-wrap"><iframe id="grafana-frame" class="grafana-frame" data-dashboard-url="<%= dashboardUrl %>" title="Статистика UlsaTrackerStyle SDK <%= labImageVersion %>" referrerpolicy="no-referrer"></iframe></div>
   <noscript><p>Откройте <a href="<%= dashboardUrl %>?theme=light">панель статистики</a> в отдельной вкладке.</p></noscript>

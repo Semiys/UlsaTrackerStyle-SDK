@@ -67,7 +67,7 @@ export function pageRouter({ config, store }) {
     const savedId = typeof req.query.saved === 'string' ? req.query.saved : '';
     res.render('dashboard', { active: 'dashboard', initialStats, recentEvents,
       saved: recentEvents.some(event => event.eventId === savedId),
-      projectName: config.projectName, demoReadKey: config.demoMode ? config.readKey : '' });
+      projectName: config.demoMode ? 'UlsaTrackerStyle SDK' : config.projectName, demoReadKey: config.demoMode ? config.readKey : '' });
   });
   router.get('/error', (req, res) => {
     // The directly addressable example uses the real validation rule and never writes.

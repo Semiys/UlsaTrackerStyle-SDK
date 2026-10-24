@@ -33,7 +33,7 @@ export async function loadConfig(env = process.env) {
     clickhouse = { url: url.href, username: env.DATABASE_USER, password: env.DATABASE_PASSWORD, database: env.DATABASE_NAME };
   }
   const demoProject = storageBackend === 'clickhouse' ? 'lab3-demo' : 'lab2-demo';
-  const demoName = storageBackend === 'clickhouse' ? 'ЛР3 · Дом Коллекционера' : 'ЛР2 · Дом Коллекционера';
+  const demoName = 'UlsaTrackerStyle SDK';
   const dataDir = resolve(env.DATA_DIR ?? './data');
   await mkdir(dataDir, { recursive: true, mode: 0o700 });
   const accessPath = join(dataDir, 'access.json');
@@ -44,7 +44,7 @@ export async function loadConfig(env = process.env) {
     if (error.code !== 'ENOENT') throw error;
     access = {
       projectId: env.PROJECT_ID ?? (demoMode ? demoProject : 'dom-collection'),
-      projectName: env.PROJECT_NAME ?? (demoMode ? demoName : 'Дом Коллекционера'),
+      projectName: env.PROJECT_NAME ?? (demoMode ? demoName : 'Мой проект'),
       ingestKey: demoMode ? DEMO_INGEST_KEY : randomBytes(32).toString('hex'),
       readKey: demoMode ? DEMO_READ_KEY : randomBytes(32).toString('hex'),
     };

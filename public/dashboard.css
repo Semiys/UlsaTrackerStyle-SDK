@@ -23,6 +23,53 @@
 h2 { margin: 0 0 16px; font-size: 19px; }
 form { display: grid; gap: 12px; margin: 24px 0; }
 input, select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--input-background); color: var(--text); font: inherit; }
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  flex: 0 0 22px;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--muted);
+  border-radius: 6px;
+  background: var(--input-background);
+  color: var(--button-text);
+  vertical-align: middle;
+  cursor: pointer;
+}
+input[type="checkbox"]::before {
+  content: "";
+  width: 7px;
+  height: 12px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: translateY(-1px) rotate(45deg) scale(0);
+}
+input[type="checkbox"]:checked,
+input[type="checkbox"]:indeterminate {
+  border-color: var(--button-background);
+  background: var(--button-background);
+}
+input[type="checkbox"]:checked::before {
+  transform: translateY(-1px) rotate(45deg);
+}
+input[type="checkbox"]:indeterminate::before {
+  width: 10px;
+  height: 0;
+  border-width: 2px 0 0;
+  transform: none;
+}
+input[type="checkbox"]:hover:not(:disabled) { border-color: var(--accent); }
+input[type="checkbox"]:disabled { opacity: .45; cursor: not-allowed; }
+@media (forced-colors: active) {
+  input[type="checkbox"] { appearance: auto; -webkit-appearance: auto; }
+  input[type="checkbox"]::before { content: none; }
+}
 .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .controls select { width: auto; }
 .metrics, .tables { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
@@ -56,5 +103,13 @@ footer { padding: 32px 0 8px; }
 
 .grafana-main .stats-header { margin-bottom: 16px; }
 .grafana-frame-wrap { margin-top: 16px; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); }
-.grafana-frame { display: block; width: 100%; height: 1720px; border: 0; }
-@media (max-width: 700px) { .grafana-frame { height: 2400px; } .grafana-main .controls { width: 100%; } }
+.grafana-frame { display: block; width: 100%; height: 2440px; border: 0; }
+@media (max-width: 700px) { .grafana-frame { height: 4300px; } .grafana-main .controls { width: 100%; } }
+
+.analytics-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin: 16px 0; }
+.analytics-toolbar p { margin: 0; }
+.analytics-period { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.analytics-period > span { margin-right: 4px; }
+.analytics-period .button { min-height: 40px; padding: 8px 14px; }
+.analytics-period .button[aria-pressed="true"] { background: var(--button-background); color: var(--button-text); border-color: var(--button-background); }
+@media (max-width: 650px) { .analytics-toolbar { align-items: flex-start; } .analytics-period { width: 100%; } }

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { request as httpRequest } from 'node:http';
-import { request as httpsRequest } from 'node:https';
+import { request as httpRequest, Agent as HttpAgent } from 'node:http';
+import { request as httpsRequest, Agent as HttpsAgent } from 'node:https';
 import { WindowLimiter } from './accounts.js';
 import { ApiError } from './errors.js';
 import { LAB_IMAGE_VERSION } from './version.js';
@@ -11,6 +11,9 @@ export class GrafanaCabinet {
     this.inFlight = new Map();
     this.ready = new Map();
     this.queryRate = new WindowLimiter(180, 60_000);
+    // Share a small query pool across public and private panels on this instance.
+    const pool = { keepAlive: true, maxSockets: 2, maxTotalSockets: 2, maxFreeSockets: 2 };
+    this.queryAgents = { 'http:': new HttpAgent(pool), 'https:': new HttpsAgent(pool) };
   }
   credentials(ownerId) {
     return { login: ownerId, password: this.accounts.derive('grafana-user:' + ownerId) };
@@ -66,7 +69,7 @@ export class GrafanaCabinet {
     await this.store.client.command({ query: `ALTER ROW POLICY ${reader} ON ${this.config.clickhouse.database}.events FOR SELECT USING ${allowed} TO ${reader}` });
     const source = { uid: 'owner-events', name: 'ClickHouse · мои приложения', type: 'grafana-clickhouse-datasource', access: 'proxy', isDefault: true,
       jsonData: { host: 'db', port: 8123, protocol: 'http', secure: false, username: reader,
-        defaultDatabase: this.config.clickhouse.database, dialTimeout: '10', queryTimeout: '30' }, secureJsonData: { password } };
+        defaultDatabase: this.config.clickhouse.database, dialTimeout: '10', queryTimeout: '30', maxOpenConns: '2', maxIdleConns: '2' }, secureJsonData: { password } };
     const exists = await this.api('/api/datasources/uid/owner-events', { orgId: org.id, allowMissing: true });
     await this.api(exists ? '/api/datasources/uid/owner-events' : '/api/datasources', { orgId: org.id, method: exists ? 'PUT' : 'POST', body: source });
     const template = JSON.parse(await readFile(new URL('../grafana/provisioning/dashboards/ulsatracker.json', import.meta.url), 'utf8'));
@@ -118,7 +121,12 @@ export class GrafanaCabinet {
           incoming.searchParams.set('orgId', '1');
         }
         const target = new URL(incoming.pathname + incoming.search, this.config.grafanaInternalUrl);
-        const request = (target.protocol === 'https:' ? httpsRequest : httpRequest)(target, { method: req.method, headers, timeout: 30_000 }, upstream => {
+        const agent = req.method === 'POST' ? this.queryAgents[target.protocol] : undefined;
+        if (agent && Object.values(agent.requests).reduce((count, requests) => count + requests.length, 0) >= 64) {
+          res.set('Retry-After', '2');
+          return res.status(503).json({ message: 'Панель занята. Повторите обновление через несколько секунд.' });
+        }
+        const request = (target.protocol === 'https:' ? httpsRequest : httpRequest)(target, { method: req.method, headers, timeout: 30_000, agent }, upstream => {
           res.status(upstream.statusCode ?? 502);
           for (const key of ['content-type', 'content-length', 'content-encoding', 'etag', 'last-modified']) {
             if (upstream.headers[key]) res.set(key, upstream.headers[key]);
@@ -136,7 +144,7 @@ export class GrafanaCabinet {
           upstream.pipe(res);
         });
         request.on('timeout', () => request.destroy());
-        request.on('error', () => { if (!res.headersSent) res.status(502).send('Панель временно недоступна. Повторите позже.'); else res.destroy(); });
+        request.on('error', () => { if (res.destroyed) return; if (!res.headersSent) res.status(502).send('Панель временно недоступна. Повторите позже.'); else res.destroy(); });
         req.on('aborted', () => request.destroy());
         res.on('close', () => { if (!res.writableEnded) request.destroy(); });
         request.end(Buffer.isBuffer(req.body) ? req.body : undefined);

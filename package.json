@@ -1,6 +1,6 @@
 {
   "name": "ulsa-tracker-style-sdk",
-  "version": "0.7.1",
+  "version": "0.7.5",
   "private": true,
   "type": "module",
   "description": "UlsaTrackerStyle SDK — сервис продуктовой аналитики для мобильных приложений",
@@ -8,7 +8,7 @@
     "start": "node src/server.js",
     "test": "node --test test/*.test.js",
     "test:lab2": "node --test test/json-store.test.js test/pages.test.js",
-    "test:lab4": "node --test test/json-store.test.js test/pages.test.js test/clickhouse-store.test.js test/grafana.test.js test/accounts.test.js test/js-sdk.test.js test/console-integration.test.js test/startup.test.js",
+    "test:lab4": "node --test test/json-store.test.js test/pages.test.js test/clickhouse-store.test.js test/grafana.test.js test/grafana-periods.test.js test/accounts.test.js test/js-sdk.test.js test/console-integration.test.js test/startup.test.js",
     "test:lab3": "node --test test/json-store.test.js test/pages.test.js test/clickhouse-store.test.js"
   },
   "engines": {

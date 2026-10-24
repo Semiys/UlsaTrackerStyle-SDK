@@ -15,5 +15,7 @@ datasources:
       tlsSkipVerify: false
       dialTimeout: "10"
       queryTimeout: "30"
+      maxOpenConns: "2"
+      maxIdleConns: "2"
     secureJsonData:
       password: app
