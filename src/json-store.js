@@ -52,7 +52,7 @@ export class JsonAnalyticsStore {
   async persist(records) {
     const json = JSON.stringify({ schemaVersion: 1, events: [...records.values()] }) + '\n';
     if (records.size > MAX_EVENTS || Buffer.byteLength(json) > MAX_BYTES) {
-      throw new ApiError(507, 'storage_limit', 'Учебное JSON-хранилище заполнено. Предел: 10 000 событий или 16 МиБ.');
+      throw new ApiError(507, 'storage_limit', 'JSON-хранилище заполнено. Предел: 10 000 событий или 16 МиБ.');
     }
     const temporaryPath = `${this.path}.${randomUUID()}.tmp`;
     let file;

@@ -1,0 +1,10 @@
+{
+  "name": "@semiys/ulsa-tracker",
+  "version": "0.1.0",
+  "description": "Explicit product analytics events for UlsaTrackerStyle SDK",
+  "type": "module",
+  "exports": { ".": "./index.mjs", "./browser": "./ulsa-tracker.js" },
+  "files": ["index.mjs", "ulsa-tracker.js", "README.md"],
+  "repository": "https://github.com/Semiys/UlsaTrackerStyle-SDK",
+  "private": true
+}

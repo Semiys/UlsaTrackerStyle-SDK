@@ -1,0 +1,11 @@
+services:
+  app:
+    image: ulsatrackerstyle-sdk:verify-0.7.5
+    build:
+      context: .
+      target: runtime
+  checks:
+    image: ulsatrackerstyle-sdk:full-test-0.7.5
+    build:
+      context: .
+      target: test

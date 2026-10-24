@@ -9,3 +9,10 @@
 !test/**
 !views/
 !views/**
+!scripts/
+!scripts/download-grafana-plugin.mjs
+!grafana/
+!grafana/**
+!sdk/
+!sdk/js/
+!sdk/js/**

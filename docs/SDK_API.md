@@ -1,6 +1,6 @@
 # Мобильная SDK 0.2.0
 
-Реализованы общее Kotlin/KMP ядро, Android-адаптер и JVM-адаптер. iOS и JavaScript позже. Серверный [контракт v1](EVENT_CONTRACT.md) реализован. Подключение и сборка — [README SDK](../sdk/kotlin/README.md), проверки телефона — [SDK_CHECKLIST.md](SDK_CHECKLIST.md).
+Реализованы общее Kotlin/KMP ядро, Android-адаптер и JVM-адаптер. JavaScript SDK 0.1.0 описана [отдельно](../sdk/js/README.md); iOS позже. Серверный [контракт v1](EVENT_CONTRACT.md) реализован. Подключение и сборка — [README SDK](../sdk/kotlin/README.md), проверки телефона — [SDK_CHECKLIST.md](SDK_CHECKLIST.md).
 
 ## Подключение и методы
 

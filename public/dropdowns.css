@@ -36,5 +36,5 @@
 .select-option[aria-disabled="true"] { opacity: .5; cursor: default; }
 .select-check { visibility: hidden; color: var(--accent); font-size: 17px; }
 .select-option[aria-selected="true"] .select-check { visibility: visible; }
-.theme-control .select-control { min-width: 155px; }
+.theme-control select, .theme-control .select-control { width:155px; min-width:155px; max-width:155px; flex:0 0 155px; }
 .controls .select-control { min-width: 120px; }

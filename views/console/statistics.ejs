@@ -1,0 +1,17 @@
+<%- include('../partials/head', { title: application.name + ' — статистика' }) %>
+<main class="dashboard-main grafana-main">
+  <section class="stats-header"><div><p class="eyebrow"><%= application.project_name %></p><h1><%= application.name %></h1><p class="muted">Статистика приложения · UTC</p></div><div class="controls"><a class="button secondary" href="/console/apps/<%= application.id %>">Подключение</a><button class="button secondary" id="refresh-grafana" type="button">Обновить панель</button><a class="button secondary" id="open-grafana" href="<%= privateDashboardUrl %>?theme=light" target="_blank" rel="noopener">На весь экран</a></div></section>
+  <section class="analytics-toolbar" aria-label="Настройки статистики">
+    <div class="analytics-period" role="group" aria-label="Период статистики">
+      <span class="small muted">Период</span>
+      <button class="button secondary" type="button" data-analytics-days="7" aria-pressed="true">7 дней</button>
+      <button class="button secondary" type="button" data-analytics-days="30" aria-pressed="false">30 дней</button>
+      <button class="button secondary" type="button" data-analytics-days="90" aria-pressed="false">90 дней</button>
+    </div>
+    <p class="muted small">Группировка по дням · UTC · обновление каждые 30 с</p>
+  </section>
+  <p class="muted small" id="comparison-period-note">Сравнение с предыдущими 7 календарными днями; последний день — до того же времени UTC. Карта активности суммирует события за выбранный период.</p>
+  <p class="muted small">Наведите на точку, чтобы увидеть значения. Нажмите название ряда в легенде, чтобы выделить его. Сессии с событиями не равны числу уникальных пользователей.</p><p id="grafana-status" class="muted small" role="status">Подготавливаем панель приложения…</p>
+  <div class="grafana-frame-wrap"><iframe id="grafana-frame" class="grafana-frame" data-dashboard-url="<%= privateDashboardUrl %>" title="Статистика приложения <%= application.name %>"></iframe></div>
+</main>
+<%- include('../partials/foot') %>

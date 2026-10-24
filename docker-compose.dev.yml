@@ -1,0 +1,7 @@
+services:
+  app:
+    image: ulsatrackerstyle-sdk:dev
+    build:
+      context: .
+      target: runtime
+    pull_policy: never

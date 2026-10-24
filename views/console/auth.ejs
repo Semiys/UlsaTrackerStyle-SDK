@@ -1,0 +1,17 @@
+<%- include('../partials/head', { title: mode === 'register' ? 'Регистрация' : 'Вход' }) %>
+<main class="narrow console-main">
+  <p class="eyebrow">Кабинет разработчика</p>
+  <h1><%= mode === 'register' ? 'Создать аккаунт' : 'Войти в кабинет' %></h1>
+  <p class="muted">Ваши проекты, подключения и статистика приложений.</p>
+  <% if (error) { %><p class="console-error" role="alert"><%= error %></p><% } %>
+  <form method="post" action="/<%= mode %>" class="console-form">
+    <input type="hidden" name="csrfToken" value="<%= consoleCsrf %>">
+    <% if (mode === 'register') { %><label>Как к вам обращаться<input name="name" autocomplete="name" maxlength="80" value="<%= values.name ?? '' %>" required></label><% } %>
+    <label>Электронная почта<input type="email" name="email" autocomplete="username" maxlength="254" value="<%= values.email ?? '' %>" required></label>
+    <label>Пароль<input type="password" name="password" autocomplete="<%= mode === 'register' ? 'new-password' : 'current-password' %>" minlength="<%= mode === 'register' ? 12 : 1 %>" maxlength="128" required></label>
+    <% if (mode === 'register') { %><p class="muted small">Не менее 12 символов. Подтверждение почты и восстановление пароля пока недоступны. Используйте отдельный пароль для этого проекта.</p><% } %>
+    <button class="button" type="submit"><%= mode === 'register' ? 'Создать аккаунт' : 'Войти' %></button>
+  </form>
+  <div class="page-actions"><a class="button secondary" href="/<%= mode === 'register' ? 'login' : 'register' %>"><%= mode === 'register' ? 'Уже есть аккаунт — войти' : 'Создать аккаунт' %></a></div>
+</main>
+<%- include('../partials/foot') %>

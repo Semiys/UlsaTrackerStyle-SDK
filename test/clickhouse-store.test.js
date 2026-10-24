@@ -139,9 +139,11 @@ test('ClickHouse serves the four existing pages, real form, refusal and mobile A
   const server = createApp({ config: { ...f.config, demoMode: true }, store: f.store }).listen(0, '127.0.0.1');
   await once(server, 'listening'); const base = 'http://127.0.0.1:' + server.address().port;
   try {
+    const health = await (await fetch(base + '/health')).json();
+    assert.equal(health.storage, 'clickhouse');
     for (const path of ['/', '/events/new', '/dashboard', '/error']) {
       const reply = await fetch(base + path); assert.equal(reply.status, 200);
-      const html = await reply.text(); assert.match(html, /ClickHouse/);
+      const html = await reply.text(); assert.match(html, /UlsaTrackerStyle SDK/);
       for (const href of ['/', '/events/new', '/dashboard', '/error']) assert.ok(html.includes(`href="${href}"`));
     }
     const html = await (await fetch(base + '/events/new')).text();

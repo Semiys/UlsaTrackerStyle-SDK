@@ -21,6 +21,7 @@
       if (!allowed.has(select.value)) return;
       preference = select.value;
       apply(preference);
+      document.dispatchEvent(new Event('ulsa-theme-change'));
       try { localStorage.setItem(preferenceKey, preference); } catch { /* Optional persistence. */ }
     });
   });

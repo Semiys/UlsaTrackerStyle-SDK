@@ -18,6 +18,8 @@ export function pageRouter({ config, store }) {
     res.locals.serverVersion = SERVER_VERSION;
     res.locals.labImageVersion = LAB_IMAGE_VERSION;
     res.locals.demoMode = config.demoMode === true;
+    res.locals.dashboardProvider = config.dashboardProvider ?? 'tables';
+    res.locals.dashboardUrl = config.dashboardUrl ?? null;
     res.locals.storageName = ({ duckdb: 'DuckDB', json: 'JSON', clickhouse: 'ClickHouse' })[config.storageBackend];
     res.locals.eventLabel = value => knownNames.get(value) ?? value;
     res.locals.dateLabel = value => new Date(value).toLocaleString('ru-RU', { timeZone: 'UTC' });
@@ -59,12 +61,13 @@ export function pageRouter({ config, store }) {
     }
   });
   router.get('/dashboard', async (req, res) => {
+    if (req.accountSession) return res.redirect(303, '/console');
     const initialStats = config.demoMode ? await store.stats(config.projectId, 7) : null;
     const recentEvents = config.demoMode ? await store.recent(config.projectId) : [];
     const savedId = typeof req.query.saved === 'string' ? req.query.saved : '';
     res.render('dashboard', { active: 'dashboard', initialStats, recentEvents,
       saved: recentEvents.some(event => event.eventId === savedId),
-      projectName: config.projectName, demoReadKey: config.demoMode ? config.readKey : '' });
+      projectName: config.demoMode ? 'UlsaTrackerStyle SDK' : config.projectName, demoReadKey: config.demoMode ? config.readKey : '' });
   });
   router.get('/error', (req, res) => {
     // The directly addressable example uses the real validation rule and never writes.

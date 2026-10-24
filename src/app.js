@@ -5,6 +5,9 @@ import { validateBatch } from './events.js';
 import { ApiError } from './errors.js';
 import { pageRouter } from './pages.js';
 import { SERVER_VERSION, LAB_IMAGE_VERSION } from './version.js';
+import { consoleRouter } from './console-pages.js';
+import { sessionMiddleware } from './console-security.js';
+import { ingestAccess, ingestPreflight } from './ingest-access.js';
 
 function authorize(key) {
   const expected = createHash('sha256').update(key).digest();
@@ -18,7 +21,7 @@ function authorize(key) {
   };
 }
 
-export function createApp({ config, store }) {
+export function createApp({ config, store, accounts = null, grafana = null }) {
   const app = express();
   app.disable('x-powered-by');
   app.set('view engine', 'ejs');
@@ -26,18 +29,29 @@ export function createApp({ config, store }) {
   app.use((req, res, next) => {
     res.set('X-Content-Type-Options', 'nosniff');
     res.set('Referrer-Policy', 'no-referrer');
-    res.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'");
+    const frames = config.dashboardUrl ? new URL(config.dashboardUrl).origin + " 'self'" : "'none'";
+    const connection = config.consoleEnabled ? ` 'self' ${new URL(config.publicUrl).origin}` : " 'self'";
+    res.set('Content-Security-Policy', `default-src 'self'; script-src 'self'; style-src 'self'; connect-src${connection}; frame-src ${frames}; frame-ancestors 'none'; base-uri 'none'`);
+    next();
+  });
+  app.use((req, res, next) => {
+    Object.assign(res.locals, { product: 'UlsaTrackerStyle SDK', serverVersion: SERVER_VERSION,
+      labImageVersion: LAB_IMAGE_VERSION, demoMode: config.demoMode === true,
+      storageName: ({ duckdb: 'DuckDB', json: 'JSON', clickhouse: 'ClickHouse' })[config.storageBackend],
+      dashboardProvider: config.dashboardProvider ?? 'tables', consoleEnabled: !!accounts, currentUser: null });
     next();
   });
   app.get('/health', (req, res) => res.json({ status: 'ok', version: SERVER_VERSION,
     storage: config.storageBackend ?? 'duckdb', demoMode: config.demoMode ?? false,
     ...(config.demoMode ? { labImageVersion: LAB_IMAGE_VERSION } : {}) }));
-  app.post('/api/v1/events', authorize(config.ingestKey), (req, res, next) => {
+  if (accounts) app.options('/api/v1/events', ingestPreflight({ accounts, config }));
+  app.post('/api/v1/events', ingestAccess({ config, accounts }), (req, res, next) => {
     if (!req.is('application/json')) return next(new ApiError(415, 'unsupported_media_type', 'Требуется Content-Type: application/json.'));
     next();
   }, express.json({ limit: '64kb', strict: true }), async (req, res) => {
     const events = validateBatch(req.body);
-    const result = await store.ingest(config.projectId, events);
+    if (req.analyticsApplication && events.some(event => event.platform !== req.analyticsApplication.platform)) throw new ApiError(400, 'platform_mismatch', 'Платформа событий не совпадает с настройкой приложения.');
+    const result = await store.ingest(req.analyticsApplication?.id ?? config.projectId, events);
     res.status(200).json({ schemaVersion: 1, ...result });
   });
   app.get('/api/v1/stats', authorize(config.readKey), async (req, res) => {
@@ -50,6 +64,12 @@ export function createApp({ config, store }) {
     res.json({ events: await store.recent(config.projectId), limit: 50 });
   });
   app.use('/api', (req, res) => res.status(404).json({ error: { code: 'not_found', message: 'Маршрут не найден.' } }));
+  if (accounts) {
+    app.use(sessionMiddleware(accounts, config));
+    if (grafana) app.use('/grafana', express.raw({ type: () => true, limit: '64kb' }), grafana.proxy());
+    app.use(consoleRouter({ config, accounts, store, grafana }));
+    app.use('/sdk', (req, res, next) => { res.set('Access-Control-Allow-Origin', '*'); next(); });
+  }
   app.use(pageRouter({ config, store }));
   app.use(express.static(fileURLToPath(new URL('../public/', import.meta.url)), { index: false }));
   app.use((req, res, next) => next(new ApiError(404, 'not_found', 'Страница не найдена. Перейдите к доступным действиям через меню.')));

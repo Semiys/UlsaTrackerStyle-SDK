@@ -1,0 +1,21 @@
+<%- include('../partials/head', { title: project.name }) %>
+<main class="console-main">
+  <a class="button secondary" href="/console">Все проекты</a>
+  <div class="console-heading"><div><p class="eyebrow"><%= project.archived ? 'Проект в архиве' : 'Проект' %></p><h1><%= project.name %></h1><p class="muted">Каждое приложение получает собственный ключ и статистику.</p></div></div>
+  <% if (project.archived) { %><p class="success-message">Проект в архиве: приём новых событий остановлен. Сохранённая статистика доступна.</p><% } %>
+  <div class="console-cards"><% for (const app of applications) { %><a class="console-card" href="/console/apps/<%= app.id %>"><p class="eyebrow"><%= app.platform.toUpperCase() %></p><h2><%= app.name %></h2><p class="muted"><%= app.identifier %></p><span class="console-card-action">Подключение и статистика</span></a><% } %></div>
+  <% if (!applications.length) { %><section class="console-empty"><h2>Добавьте приложение</h2><p class="muted">Для Android укажите package name. Для сайта — адрес с протоколом и портом, без пути.</p></section><% } %>
+  <% if (!project.archived) { %><section class="console-section"><h2>Новое приложение</h2><form method="post" action="/console/projects/<%= project.id %>/apps" class="console-form">
+    <input type="hidden" name="csrfToken" value="<%= consoleCsrf %>">
+    <label>Название<input name="name" maxlength="100" placeholder="Моё приложение · Android" required></label>
+    <label>Платформа<select name="platform"><option value="android">Android — Kotlin SDK</option><option value="web">Web — JavaScript SDK</option><option value="ios">iOS — пока только HTTP API</option></select></label>
+    <label>Package name, bundle ID или origin сайта<input name="identifier" maxlength="200" placeholder="com.example.app или http://localhost:8080" required></label>
+    <p class="muted small">Выбор iOS создаёт приложение в кабинете. Готового iOS-адаптера SDK пока нет.</p>
+    <button class="button" type="submit">Добавить и получить ключ</button>
+  </form></section><% } %>
+  <section class="console-section"><h2>Настройки проекта</h2><form method="post" action="/console/projects/<%= project.id %>/settings" class="console-form">
+    <input type="hidden" name="csrfToken" value="<%= consoleCsrf %>"><label>Название<input name="name" maxlength="100" value="<%= project.name %>" required></label>
+    <label class="console-check"><input type="checkbox" name="archived" value="1" <%= project.archived ? 'checked' : '' %>> Поместить проект в архив и остановить приём событий</label><button class="button secondary" type="submit">Сохранить настройки</button>
+  </form></section>
+</main>
+<%- include('../partials/foot') %>

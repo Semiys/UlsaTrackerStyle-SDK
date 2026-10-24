@@ -1,0 +1,43 @@
+<%- include('../partials/head', { title: application.name }) %>
+<main class="console-main">
+  <a class="button secondary" href="/console/projects/<%= application.project_id %>"><%= application.project_name %></a>
+  <div class="console-heading"><div><p class="eyebrow"><%= application.platform.toUpperCase() %></p><h1><%= application.name %></h1><p class="muted"><%= application.identifier %></p></div><a class="button" href="/console/apps/<%= application.id %>/stats">Открыть статистику</a></div>
+  <% if (rawKey) { %><section class="console-section"><h2>Сохраните ключ отправки</h2><p class="muted">Полный ключ показывается один раз. Он позволяет отправлять события этого приложения, но не открывает статистику или кабинет.</p><pre class="console-code" id="new-ingest-key"><code><%= rawKey %></code></pre><button class="button secondary" type="button" data-copy="new-ingest-key">Скопировать ключ</button></section><% } %>
+  <section class="console-section"><h2>Подключение</h2><p>Адрес сервиса: <code><%= endpoint %></code></p>
+  <% if (application.platform === 'android') { %>
+    <ol class="console-instructions"><li>Подключите модуль библиотеки через Gradle composite build. Публичная публикация в Maven ещё не выполнена.</li><li>Создайте один экземпляр SDK в Android Application.</li><li>Передавайте события в нужных местах приложения. Нажатие и успешное действие — разные события.</li></ol>
+    <pre class="console-code" id="android-example"><code>val tracker = createAndroidTracker(
+    context = this,
+    config = TrackerConfig(
+        endpoint = "<%= endpoint %>",
+        ingestKey = "<%= rawKey || 'ВАШ_КЛЮЧ_ОТПРАВКИ' %>",
+        appVersion = "1.0.0"<%= endpoint.startsWith('http:') ? ',\n        allowHttp = true // только локальная разработка' : '' %>
+    )
+)
+tracker.screen("collection")
+tracker.click(button = "add_model", screen = "collection")</code></pre>
+    <p class="muted small">Импорты: io.github.semiys.ulsatracker.createAndroidTracker и io.github.semiys.ulsatracker.TrackerConfig. С телефона localhost указывает на телефон: для USB используйте adb reverse tcp:8080 tcp:8080. Подробная инструкция входит в репозиторий: sdk/kotlin/README.md.</p>
+  <% } else if (application.platform === 'web') { %>
+    <ol class="console-instructions"><li>Подключите скрипт на сайте <code><%= application.identifier %></code>.</li><li>Вставьте ключ отправки и создайте один экземпляр.</li><li>Вызывайте методы для нужных действий. Содержимое полей и все клики автоматически не собираются.</li></ol>
+    <pre class="console-code" id="web-example"><code>&lt;script src="<%= endpoint %>/sdk/ulsa-tracker.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+const tracker = UlsaTracker.create({
+  endpoint: "<%= endpoint %>",
+  ingestKey: "<%= rawKey || 'ВАШ_КЛЮЧ_ОТПРАВКИ' %>",
+  appVersion: "1.0.0"<%= endpoint.startsWith('http:') ? ',\n  allowHttp: true // только локальная разработка' : '' %>
+});
+tracker.screen("home");
+// В обработчике своей кнопки:
+// tracker.click("add_model", "collection");
+&lt;/script&gt;</code></pre>
+    <p class="muted small">Также доступен ES module: <code>import { createTracker } from "<%= endpoint %>/sdk/index.mjs"</code>. Npm-пакет подготовлен в sdk/js, но ещё не опубликован в реестре. Origin должен точно совпадать с настройкой приложения, включая протокол и порт.</p>
+    <a class="button secondary" href="/sdk-demo">Открыть проверку JavaScript SDK</a>
+  <% } else { %><p>iOS-адаптер ещё не реализован. Сервер принимает контракт HTTP API v1; готовую интеграцию для iOS пока не заявляем.</p><% } %>
+  </section>
+  <section class="console-section"><h2>Ключи отправки</h2><p class="muted">После замены старый ключ перестанет принимать события. Обновите его во всех установленных клиентах, которым нужна дальнейшая отправка.</p>
+    <% for (const key of keys) { %><div class="console-key"><div><code><%= key.display %></code><p class="muted small"><%= key.revoked_at ? 'Отозван' : 'Действует' %></p></div><% if (!key.revoked_at) { %><form method="post" action="/console/apps/<%= application.id %>/keys/<%= key.id %>/revoke"><input type="hidden" name="csrfToken" value="<%= consoleCsrf %>"><button class="button secondary" type="submit">Отозвать</button></form><% } %></div><% } %>
+    <% if (!application.archived) { %><form method="post" action="/console/apps/<%= application.id %>/keys/rotate"><input type="hidden" name="csrfToken" value="<%= consoleCsrf %>"><button class="button secondary" type="submit">Заменить ключ</button></form><% } %>
+  </section>
+  <section class="console-section"><h2>Проверить соединение</h2><p class="muted">Тест из кабинета проверяет запись в БД и графики. Подключение самого SDK проверяйте отдельно на устройстве или сайте.</p><div class="page-actions"><a class="button secondary" href="/console/apps/<%= application.id %>/test">Отправить тестовое событие</a></div></section>
+</main>
+<%- include('../partials/foot') %>

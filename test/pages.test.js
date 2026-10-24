@@ -30,10 +30,12 @@ async function fixture(t, demo = true) {
 
 test('all four template pages open directly with product name and complete navigation', async t => {
   const f = await fixture(t);
+  f.config.projectName = 'ЛР3 · Дом Коллекционера'; // A pre-existing volume may retain its old label.
   for (const path of ['/', '/events/new', '/dashboard', '/error']) {
     const response = await fetch(f.url + path); assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /UlsaTrackerStyle SDK/); assert.doesNotMatch(html, /<%/);
+    assert.doesNotMatch(html, /ЛР\d|лабораторн|учебн|Дом Коллекционера|[→←]/i);
     for (const href of ['/', '/events/new', '/dashboard', '/error']) assert.ok(html.includes(`href="${href}"`));
     assert.equal(response.headers.get('cache-control'), 'no-store');
   }
