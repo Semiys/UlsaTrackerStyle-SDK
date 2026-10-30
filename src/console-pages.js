@@ -1,6 +1,7 @@
 import { Router, urlencoded } from 'express';
 import { randomUUID } from 'node:crypto';
 import { ApiError } from './errors.js';
+import { createCsvExporter } from './csv-export.js';
 import { requireOwner, requireCsrf, authLimiter } from './console-security.js';
 import { validateBatch } from './events.js';
 import { SERVER_VERSION } from './version.js';
@@ -10,6 +11,7 @@ const field = (req, name) => typeof req.body?.[name] === 'string' ? req.body[nam
 
 export function consoleRouter({ config, accounts, store, grafana }) {
   const router = Router();
+  const sendCsv = createCsvExporter(store);
   const parse = urlencoded({ extended: false, limit: '12kb', parameterLimit: 20 });
   const limit = authLimiter();
   const mutations = new WindowLimiter(60, 60_000);
@@ -95,6 +97,15 @@ export function consoleRouter({ config, accounts, store, grafana }) {
     res.render('console/statistics', { active: 'console', application, dashboardProvider: 'grafana',
       privateDashboardUrl: `/grafana/d/${application.id}/events`,
     });
+  });
+  router.get('/console/apps/:appId/export.csv', (req, res) => {
+    const application = accounts.application(req.accountSession.user.id, req.params.appId);
+    return sendCsv(req, res, application.id);
+  });
+  router.get('/console/apps/:appId/range', async (req, res) => {
+    const application = accounts.application(req.accountSession.user.id, req.params.appId);
+    if (!store.firstEventAt) throw new ApiError(503, 'range_unavailable', 'Весь период доступен на стенде с ClickHouse.');
+    res.json({ firstEventAt: await store.firstEventAt(application.id) });
   });
   router.get('/console/apps/:appId/data', async (req, res) => {
     const application = accounts.application(req.accountSession.user.id, req.params.appId);

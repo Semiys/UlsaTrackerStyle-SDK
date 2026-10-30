@@ -23,7 +23,7 @@ async function query(target, range = {}) {
   const data = await json(grafanaUrl + '/api/ds/query', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: String(range.from ?? Date.now() - 7 * 86_400_000), to: String(range.to ?? Date.now() + 60_000),
-      queries: [{ ...target, refId: 'A', intervalMs: 10_000, maxDataPoints: 1000 }] }),
+      queries: [{ ...target, rawSql: target.rawSql.replaceAll('$__timezone', 'UTC'), refId: 'A', intervalMs: 10_000, maxDataPoints: 1000 }] }),
   });
   assert.ok(data.results?.A, JSON.stringify(data));
   assert.equal(data.results.A.error, undefined, JSON.stringify(data.results.A));
@@ -48,7 +48,7 @@ test('Grafana opens a provisioned dashboard anonymously, with the fixed ClickHou
   const health = await json(grafanaUrl + '/api/health');
   assert.equal(health.database, 'ok');
   const data = await json(grafanaUrl + '/api/dashboards/uid/ulsatracker');
-  assert.equal(data.dashboard.title, 'UlsaTrackerStyle SDK 0.0.4');
+  assert.equal(data.dashboard.title, process.env.EXPECTED_DASHBOARD_TITLE ?? definition.title);
   assert.equal(data.meta.canSave, false);
   assert.equal(data.dashboard.panels.length, definition.panels.length);
   const source = await json(grafanaUrl + '/api/datasources/uid/ulsatracker-clickhouse');
@@ -61,8 +61,8 @@ test('Grafana opens a provisioned dashboard anonymously, with the fixed ClickHou
   const response = await fetch(appUrl + '/dashboard');
   const html = await response.text();
   assert.match(html, /grafana-frame/);
-  assert.match(html, /0\.0\.4/);
-  assert.doesNotMatch(html, /<svg|daily-chart/);
+  assert.ok(html.includes('Сборка ' + (process.env.EXPECTED_DASHBOARD_TITLE?.split(' ').at(-1) ?? '0.0.4')));
+  assert.doesNotMatch(html, /daily-chart/);
   assert.match(response.headers.get('content-security-policy'), /frame-src http:\/\/localhost:13000/);
   const embedded = await fetch(grafanaUrl + '/d/ulsatracker/events');
   assert.equal(embedded.status, 200);

@@ -1,0 +1,17 @@
+<dialog id="csv-dialog" class="csv-dialog" aria-labelledby="csv-title">
+  <h2 id="csv-title">Скачать CSV</h2>
+  <p id="csv-period" class="muted small"></p>
+  <section class="csv-choice">
+    <h3>Сводка по действиям</h3>
+    <p class="muted small">Сколько раз открывали экраны и нажимали кнопки. Подходит для анализа в нейросети. Число сеансов указано отдельно для каждой строки.</p>
+    <button class="button" type="button" data-export-kind="summary">Скачать сводку</button>
+  </section>
+  <section class="csv-choice">
+    <h3>Подробные события</h3>
+    <p class="muted small">Каждое событие, его время, сеанс и свойства. Для подробного разбора последовательности действий.</p>
+    <button class="button secondary" type="button" data-export-kind="events">Скачать события</button>
+  </section>
+  <p class="muted small">Выгрузка за выбранный период. До 10 000 строк и 8 МиБ; если данных больше, сократите период. CSV открывается в Excel. Данные в нейросеть сайт не отправляет.</p>
+  <p id="csv-status" class="small" role="status" aria-live="polite"></p>
+  <div class="controls"><button class="button secondary" id="csv-close" type="button">Закрыть</button></div>
+</dialog>

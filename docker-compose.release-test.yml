@@ -1,0 +1,5 @@
+# Use with root, release, lab4-test and period-test overrides, in this order.
+services:
+  checks:
+    environment:
+      EXPECTED_DASHBOARD_TITLE: UlsaTrackerStyle SDK 0.9.0

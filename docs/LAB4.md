@@ -1,6 +1,6 @@
 # ЛР4 — Grafana, кабинет и JavaScript SDK
 
-Версия сервера **0.7.5**, образ **semiys/ulsatrackerstyle-sdk:0.0.4**, Kotlin SDK **0.2.0**, JavaScript SDK **0.1.0**. Дата проверки: 24.10.2026. [Запуск](../README.md#запуск), [путь по кабинету](CONSOLE.md), [ручные проверки](LAB4_CHECKLIST.md).
+Версия сервера **0.7.5**, образ **semiys/ulsatrackerstyle-sdk:0.0.4**, Kotlin SDK **0.2.0**, JavaScript SDK **0.1.0**. Дата проверки: 24.10.2026. [Запуск](../README.md#запуск-лр4), [путь по кабинету](CONSOLE.md), [ручные проверки](LAB4_CHECKLIST.md).
 
 ## Публичный выпуск
 

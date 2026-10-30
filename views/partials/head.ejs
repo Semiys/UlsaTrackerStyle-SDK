@@ -10,16 +10,20 @@
   <link rel="stylesheet" href="/dashboard.css">
   <link rel="stylesheet" href="/pages.css">
   <link rel="stylesheet" href="/dropdowns.css">
-  <% if (consoleEnabled) { %><link rel="stylesheet" href="/console.css"><script src="/console.js" defer></script><% } %>
+  <% if (consoleEnabled || active === 'guide') { %><link rel="stylesheet" href="/console.css"><script src="/console.js" defer></script><% } %>
+  <% if (active === 'guide') { %><link rel="stylesheet" href="/guide.css"><% } %>
   <script src="/dropdowns.js" defer></script>
-  <% if (active === 'dashboard' || typeof privateDashboardUrl === 'string') { %><script src="/<%= dashboardProvider === 'grafana' ? 'dashboard' : 'statistics' %>.js" defer></script><% } %>
+  <% if (active === 'dashboard' || typeof privateDashboardUrl === 'string') { %>
+    <% if (dashboardProvider === 'grafana') { %><link rel="stylesheet" href="/date-range.css"><script type="module" src="/dashboard.js"></script>
+    <% } else { %><script src="/statistics.js" defer></script><% } %>
+  <% } %>
 </head>
 <body class="dashboard-page" data-demo-read-key="<%= typeof demoReadKey === 'string' ? demoReadKey : '' %>">
 <div class="layout">
   <header class="page-header">
     <div><a class="brand" href="/"><%= product %></a><p class="muted small">Аналитика приложений и сайтов</p></div>
     <nav class="page-nav" aria-label="Основная навигация">
-      <% for (const item of [{ href: '/', label: 'Главная', key: 'home' }, { href: '/events/new', label: 'Отправить событие', key: 'form' }, { href: '/dashboard', label: 'Статистика', key: 'dashboard' }, { href: '/error', label: 'Пример отказа', key: 'error' }]) { %>
+      <% for (const item of [{ href: '/', label: 'Главная', key: 'home' }, { href: '/events/new', label: 'Отправить событие', key: 'form' }, { href: '/dashboard', label: 'Статистика', key: 'dashboard' }, { href: '/error', label: 'Пример отказа', key: 'error' }, { href: '/guide', label: 'Инструкция по подключению', key: 'guide' }]) { %>
         <a class="button secondary" href="<%= item.href %>" <% if (active === item.key) { %>aria-current="page"<% } %>><%= item.label %></a>
       <% } %>
       <% if (consoleEnabled) { %><a class="button secondary" href="<%= currentUser ? '/console' : '/login' %>" <% if (active === 'console') { %>aria-current="page"<% } %>><%= currentUser ? 'Мой кабинет' : 'Войти' %></a><% } %>

@@ -3,7 +3,7 @@
   <a class="button secondary" href="/console/projects/<%= application.project_id %>"><%= application.project_name %></a>
   <div class="console-heading"><div><p class="eyebrow"><%= application.platform.toUpperCase() %></p><h1><%= application.name %></h1><p class="muted"><%= application.identifier %></p></div><a class="button" href="/console/apps/<%= application.id %>/stats">Открыть статистику</a></div>
   <% if (rawKey) { %><section class="console-section"><h2>Сохраните ключ отправки</h2><p class="muted">Полный ключ показывается один раз. Он позволяет отправлять события этого приложения, но не открывает статистику или кабинет.</p><pre class="console-code" id="new-ingest-key"><code><%= rawKey %></code></pre><button class="button secondary" type="button" data-copy="new-ingest-key">Скопировать ключ</button></section><% } %>
-  <section class="console-section"><h2>Подключение</h2><p>Адрес сервиса: <code><%= endpoint %></code></p>
+  <section class="console-section"><h2>Подключение</h2><div class="page-actions"><a class="button secondary" href="/guide#<%= application.platform === 'android' ? 'android' : application.platform === 'web' ? 'javascript' : 'project' %>">Пошаговая инструкция</a></div><p>Адрес сервиса: <code><%= endpoint %></code></p>
   <% if (application.platform === 'android') { %>
     <ol class="console-instructions"><li>Подключите модуль библиотеки через Gradle composite build. Публичная публикация в Maven ещё не выполнена.</li><li>Создайте один экземпляр SDK в Android Application.</li><li>Передавайте события в нужных местах приложения. Нажатие и успешное действие — разные события.</li></ol>
     <pre class="console-code" id="android-example"><code>val tracker = createAndroidTracker(
