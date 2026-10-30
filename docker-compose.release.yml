@@ -1,0 +1,9 @@
+# Product release; combine with docker-compose.yml. Laboratory 0.0.4 stays unchanged.
+services:
+  app:
+    image: semiys/ulsatrackerstyle-sdk:0.9.0
+    environment:
+      LAB_IMAGE_VERSION: 0.9.0
+  dashboard:
+    volumes:
+      - ./grafana/release-dashboard.json:/etc/grafana/provisioning/dashboards/ulsatracker.json:ro

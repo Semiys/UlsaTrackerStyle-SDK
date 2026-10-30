@@ -28,15 +28,15 @@ async function fixture(t, demo = true) {
   return { url, config, store, form, post };
 }
 
-test('all four template pages open directly with product name and complete navigation', async t => {
+test('all public template pages open directly with product name and complete navigation', async t => {
   const f = await fixture(t);
   f.config.projectName = 'ЛР3 · Дом Коллекционера'; // A pre-existing volume may retain its old label.
-  for (const path of ['/', '/events/new', '/dashboard', '/error']) {
+  for (const path of ['/', '/events/new', '/dashboard', '/error', '/guide']) {
     const response = await fetch(f.url + path); assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /UlsaTrackerStyle SDK/); assert.doesNotMatch(html, /<%/);
     assert.doesNotMatch(html, /ЛР\d|лабораторн|учебн|Дом Коллекционера|[→←]/i);
-    for (const href of ['/', '/events/new', '/dashboard', '/error']) assert.ok(html.includes(`href="${href}"`));
+    for (const href of ['/', '/events/new', '/dashboard', '/error', '/guide']) assert.ok(html.includes(`href="${href}"`));
     assert.equal(response.headers.get('cache-control'), 'no-store');
   }
   assert.equal((await fetch(f.url + '/missing')).status, 404);

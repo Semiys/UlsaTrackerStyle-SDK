@@ -117,6 +117,9 @@ test('HTTP account flow isolates events, rejects CSRF and wrong origins, and inv
   assert.match(projectHtml, /&lt;script&gt;/); assert.doesNotMatch(projectHtml, /<script>alert/);
   const appResponse = await a.post(path + '/apps', { name: 'Website', platform: 'web', identifier: 'http://site.example.test', csrfToken: csrf });
   assert.equal(appResponse.status, 200);
+  assert.equal(appResponse.headers.get('cache-control'), 'private, no-store', 'Key responses must not be cached');
+  assert.equal((await a.request(path)).headers.get('cache-control'), 'private, no-store');
+  assert.equal((await fetch(url + '/login')).headers.get('cache-control'), 'private, no-store');
   const html = await appResponse.text(), key = html.match(/ulsa_[a-f0-9]{64}/)?.[0], appId = html.match(/\/console\/apps\/(a_[a-f0-9]{32})/)?.[1];
   assert.ok(key && appId);
   assert.equal((await b.request(`/console/apps/${appId}/data`)).status, 404);

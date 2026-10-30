@@ -1,18 +1,18 @@
 {
   "uid": "ulsatracker",
   "title": "UlsaTrackerStyle SDK 0.0.4",
-  "description": "Дневная динамика, сравнение с предыдущим периодом, активность по дням недели и часам UTC, типы событий и точные значения по экранам и кнопкам. Сессии не равны пользователям.",
+  "description": "Динамика и сравнение активности, переходы между экранами, типы событий и точные значения по экранам и кнопкам. Сессии не равны пользователям.",
   "tags": [
     "UlsaTrackerStyle",
     "analytics"
   ],
   "schemaVersion": 39,
-  "version": 3,
+  "version": 6,
   "editable": false,
-  "timezone": "utc",
+  "timezone": "browser",
   "refresh": "30s",
   "time": {
-    "from": "now-6d/d",
+    "from": "now/d",
     "to": "now"
   },
   "timepicker": {
@@ -21,7 +21,8 @@
       "30s",
       "1m",
       "5m"
-    ]
+    ],
+    "hidden": true
   },
   "templating": {
     "list": []
@@ -54,7 +55,7 @@
       "id": 1,
       "title": "События",
       "type": "stat",
-      "description": "Все события приложения за выбранный период, включая события с пользовательскими названиями.",
+      "description": "Все события: нажатия, открытия экранов, успешные действия и события с пользовательскими названиями. Один переход обычно создаёт нажатие и открытие экрана. SDK отправляет события пакетами, поэтому счётчик может увеличиться сразу на несколько.",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "ulsatracker-clickhouse"
@@ -74,7 +75,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT count() AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at)"
+          "rawSql": "SELECT count() AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
         }
       ],
       "fieldConfig": {
@@ -128,7 +129,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT uniqExact(session_id) AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at)"
+          "rawSql": "SELECT uniqExact(session_id) AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
         }
       ],
       "fieldConfig": {
@@ -182,7 +183,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT countIf(name = 'screen_view') AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at)"
+          "rawSql": "SELECT countIf(name = 'screen_view') AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
         }
       ],
       "fieldConfig": {
@@ -236,7 +237,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT countIf(name = 'button_click') AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at)"
+          "rawSql": "SELECT countIf(name = 'button_click') AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
         }
       ],
       "fieldConfig": {
@@ -290,7 +291,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT countIf(name = 'action_success') AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at)"
+          "rawSql": "SELECT countIf(name = 'action_success') AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
         }
       ],
       "fieldConfig": {
@@ -322,9 +323,9 @@
     },
     {
       "id": 6,
-      "title": "Динамика событий · по дням",
+      "title": "Динамика событий",
       "type": "timeseries",
-      "description": "Каждая точка — количество за день UTC в выбранном периоде. Дни без событий показаны нулями. Первый и последний день могут быть неполными. Все события включают открытия экранов, нажатия и успешные действия. Нажмите название ряда в легенде, чтобы выделить его.",
+      "description": "Количество событий за интервал. Короткие интервалы измеряются секундами, минутами и часами; длинные группируются по календарным дням часового пояса пользователя, включая сутки при переводе часов. Пустые интервалы показаны нулями, крайние могут быть неполными. Все события включают открытия, нажатия и успешные действия.",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "ulsatracker-clickhouse"
@@ -344,7 +345,7 @@
           },
           "queryType": "sql",
           "format": 0,
-          "rawSql": "SELECT toDateTime(toStartOfDay(occurred_at, 'UTC'), 'UTC') AS time,\ncount() AS \"Все события\", countIf(name = 'screen_view') AS \"Открытия экранов\",\ncountIf(name = 'button_click') AS \"Нажатия кнопок\", countIf(name = 'action_success') AS \"Успешные действия\"\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at)\nGROUP BY time ORDER BY time WITH FILL\nFROM toDateTime(toStartOfDay($__fromTime, 'UTC'), 'UTC')\nTO toDateTime(toStartOfDay($__toTime, 'UTC'), 'UTC') + INTERVAL 1 DAY STEP INTERVAL 1 DAY"
+          "rawSql": "WITH $__fromTime_ms AS range_from, $__toTime_ms AS range_to,\n'$__timezone' AS zone,\ndateDiff('second', range_from, range_to) AS span_seconds,\nmultiIf(span_seconds <= 60, 1, span_seconds <= 3600, 60, span_seconds <= 172800, 3600, 86400) AS step_seconds,\nstep_seconds * 1000 AS step_ms,\ntimezoneOffset(toTimeZone(range_from, zone)) * 1000 AS offset_ms,\nif(step_seconds = 86400,\n  toUnixTimestamp64Milli(toDateTime64(toStartOfDay(range_from, zone), 3)),\n  intDiv(toUnixTimestamp64Milli(range_from) + offset_ms, step_ms) * step_ms - offset_ms) AS first_bucket,\n(ts -> if(step_seconds = 86400,\n  toUnixTimestamp64Milli(toDateTime64(toStartOfDay(ts, zone), 3)),\n  first_bucket + intDiv(toUnixTimestamp64Milli(ts) - first_bucket, step_ms) * step_ms)) AS bucketAt,\nif(step_seconds = 86400, dateDiff('day', range_from, range_to, zone) + 1,\n  intDiv(toUnixTimestamp64Milli(range_to) - first_bucket, step_ms) + 1) AS bucket_count,\nbuckets AS (\n  SELECT if(step_seconds = 86400,\n    toUnixTimestamp64Milli(addDays(fromUnixTimestamp64Milli(first_bucket, zone), toInt32(number))),\n    first_bucket + toInt64(number) * step_ms) AS bucket\n  FROM numbers(toUInt64(greatest(bucket_count, 1)))\n), counts AS (\n  SELECT bucketAt(occurred_at) AS bucket, count() AS total,\n    countIf(name = 'screen_view') AS views, countIf(name = 'button_click') AS clicks,\n    countIf(name = 'action_success') AS successes\n  FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)\n  GROUP BY bucket\n)\nSELECT fromUnixTimestamp64Milli(greatest(b.bucket, toUnixTimestamp64Milli(range_from)), 'UTC') AS time,\n  ifNull(c.total, 0) AS \"Все события\", ifNull(c.views, 0) AS \"Открытия экранов\",\n  ifNull(c.clicks, 0) AS \"Нажатия кнопок\", ifNull(c.successes, 0) AS \"Успешные действия\"\nFROM buckets AS b LEFT JOIN counts AS c ON b.bucket = c.bucket ORDER BY b.bucket"
         }
       ],
       "fieldConfig": {
@@ -461,7 +462,7 @@
       "id": 13,
       "title": "Сравнение с предыдущим периодом",
       "type": "timeseries",
-      "description": "Две линии общего количества событий по дням UTC. Предыдущий период сдвинут на число календарных дней выбранного периода (7, 30 или 90 для быстрых кнопок) и совмещён по дням на графике. Последний день обоих периодов ограничен одинаковым временем UTC. Это сравнение количества принятых событий, а не числа пользователей.",
+      "description": "Текущий отрезок и непосредственно предыдущий отрезок той же реальной длительности. Предыдущие события сдвинуты на текущую шкалу. Дневные интервалы соответствуют часовому поясу пользователя; крайние интервалы могут быть неполными.",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "ulsatracker-clickhouse"
@@ -481,7 +482,7 @@
           },
           "queryType": "sql",
           "format": 0,
-          "rawSql": "WITH $__fromTime AS range_from, $__toTime AS range_to,\ndateDiff('day', toDate(range_from, 'UTC'), toDate(range_to, 'UTC')) + 1 AS shift_days,\naddDays(range_from, -shift_days) AS previous_from, addDays(range_to, -shift_days) AS previous_to\nSELECT toDateTime(toStartOfDay(if(occurred_at >= range_from, occurred_at, addDays(occurred_at, shift_days)), 'UTC'), 'UTC') AS time,\ncountIf(occurred_at >= range_from AND occurred_at <= range_to) AS \"Выбранный период\",\ncountIf(occurred_at >= previous_from AND occurred_at <= previous_to) AS \"Предыдущий период\"\nFROM app.events FINAL WHERE project_id = 'lab3-demo'\nAND ((occurred_at >= range_from AND occurred_at <= range_to) OR (occurred_at >= previous_from AND occurred_at <= previous_to))\nGROUP BY time ORDER BY time WITH FILL\nFROM toDateTime(toStartOfDay(range_from, 'UTC'), 'UTC')\nTO toDateTime(toStartOfDay(range_to, 'UTC'), 'UTC') + INTERVAL 1 DAY STEP INTERVAL 1 DAY"
+          "rawSql": "WITH $__fromTime_ms AS range_from, $__toTime_ms AS range_to,\n'$__timezone' AS zone,\ndateDiff('second', range_from, range_to) AS span_seconds,\nmultiIf(span_seconds <= 60, 1, span_seconds <= 3600, 60, span_seconds <= 172800, 3600, 86400) AS step_seconds,\nstep_seconds * 1000 AS step_ms,\ntimezoneOffset(toTimeZone(range_from, zone)) * 1000 AS offset_ms,\nif(step_seconds = 86400,\n  toUnixTimestamp64Milli(toDateTime64(toStartOfDay(range_from, zone), 3)),\n  intDiv(toUnixTimestamp64Milli(range_from) + offset_ms, step_ms) * step_ms - offset_ms) AS first_bucket,\n(ts -> if(step_seconds = 86400,\n  toUnixTimestamp64Milli(toDateTime64(toStartOfDay(ts, zone), 3)),\n  first_bucket + intDiv(toUnixTimestamp64Milli(ts) - first_bucket, step_ms) * step_ms)) AS bucketAt,\nif(step_seconds = 86400, dateDiff('day', range_from, range_to, zone) + 1,\n  intDiv(toUnixTimestamp64Milli(range_to) - first_bucket, step_ms) + 1) AS bucket_count,\ngreatest(toUnixTimestamp64Milli(range_to) - toUnixTimestamp64Milli(range_from), 1) AS shift_ms,\naddMilliseconds(range_from, -shift_ms) AS previous_from,\nbuckets AS (\n  SELECT if(step_seconds = 86400,\n    toUnixTimestamp64Milli(addDays(fromUnixTimestamp64Milli(first_bucket, zone), toInt32(number))),\n    first_bucket + toInt64(number) * step_ms) AS bucket\n  FROM numbers(toUInt64(greatest(bucket_count, 1)))\n), counts AS (\n  SELECT bucketAt(if(occurred_at >= range_from, occurred_at, addMilliseconds(occurred_at, shift_ms))) AS bucket,\n    countIf(occurred_at >= range_from AND occurred_at <= range_to) AS current_count,\n    countIf(occurred_at >= previous_from AND occurred_at < range_from) AS previous_count\n  FROM app.events FINAL WHERE project_id = 'lab3-demo'\n    AND ((occurred_at >= range_from AND occurred_at <= range_to) OR (occurred_at >= previous_from AND occurred_at < range_from))\n  GROUP BY bucket\n)\nSELECT fromUnixTimestamp64Milli(greatest(b.bucket, toUnixTimestamp64Milli(range_from)), 'UTC') AS time,\n  ifNull(c.current_count, 0) AS \"Выбранный период\", ifNull(c.previous_count, 0) AS \"Предыдущий период\"\nFROM buckets AS b LEFT JOIN counts AS c ON b.bucket = c.bucket ORDER BY b.bucket"
         }
       ],
       "fieldConfig": {
@@ -576,9 +577,9 @@
     },
     {
       "id": 14,
-      "title": "Карта активности · дни и часы UTC",
+      "title": "Переходы между экранами",
       "type": "table",
-      "description": "Строка — день недели, столбец — час UTC (00 означает 00:00–00:59). В ячейке сумма принятых событий за весь выбранный период, не среднее за день. Пустые часы равны нулю. Цвет: 0 — без заливки, 1–4 — светлый, 5–9 — средний, 10–49 — насыщенный, от 50 — тёмный. На узком экране прокручивайте сетку по горизонтали.",
+      "description": "15 самых частых переходов между разными экранами. Пара строится по двум последовательным screen_view одной сессии; оба события должны входить в выбранный период. Одиночные просмотры, пустые экраны, повтор одного экрана и неоднозначный порядок при одинаковом времени пропускаются. Доля считается от всех подходящих переходов до ограничения 15 строк. Это наблюдаемые переходы, не воронка и не уникальные пользователи.",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "ulsatracker-clickhouse"
@@ -598,73 +599,58 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT multiIf(day.number = 0, 'Пн', day.number = 1, 'Вт', day.number = 2, 'Ср', day.number = 3, 'Чт', day.number = 4, 'Пт', day.number = 5, 'Сб', 'Вс') AS \"День / час UTC\",\nifNull(buckets.h00, 0) AS \"00\",\nifNull(buckets.h01, 0) AS \"01\",\nifNull(buckets.h02, 0) AS \"02\",\nifNull(buckets.h03, 0) AS \"03\",\nifNull(buckets.h04, 0) AS \"04\",\nifNull(buckets.h05, 0) AS \"05\",\nifNull(buckets.h06, 0) AS \"06\",\nifNull(buckets.h07, 0) AS \"07\",\nifNull(buckets.h08, 0) AS \"08\",\nifNull(buckets.h09, 0) AS \"09\",\nifNull(buckets.h10, 0) AS \"10\",\nifNull(buckets.h11, 0) AS \"11\",\nifNull(buckets.h12, 0) AS \"12\",\nifNull(buckets.h13, 0) AS \"13\",\nifNull(buckets.h14, 0) AS \"14\",\nifNull(buckets.h15, 0) AS \"15\",\nifNull(buckets.h16, 0) AS \"16\",\nifNull(buckets.h17, 0) AS \"17\",\nifNull(buckets.h18, 0) AS \"18\",\nifNull(buckets.h19, 0) AS \"19\",\nifNull(buckets.h20, 0) AS \"20\",\nifNull(buckets.h21, 0) AS \"21\",\nifNull(buckets.h22, 0) AS \"22\",\nifNull(buckets.h23, 0) AS \"23\"\nFROM numbers(7) AS day LEFT JOIN (\nSELECT toDayOfWeek(toTimeZone(occurred_at, 'UTC')) AS weekday,\ncountIf(toHour(occurred_at, 'UTC') = 0) AS h00,\ncountIf(toHour(occurred_at, 'UTC') = 1) AS h01,\ncountIf(toHour(occurred_at, 'UTC') = 2) AS h02,\ncountIf(toHour(occurred_at, 'UTC') = 3) AS h03,\ncountIf(toHour(occurred_at, 'UTC') = 4) AS h04,\ncountIf(toHour(occurred_at, 'UTC') = 5) AS h05,\ncountIf(toHour(occurred_at, 'UTC') = 6) AS h06,\ncountIf(toHour(occurred_at, 'UTC') = 7) AS h07,\ncountIf(toHour(occurred_at, 'UTC') = 8) AS h08,\ncountIf(toHour(occurred_at, 'UTC') = 9) AS h09,\ncountIf(toHour(occurred_at, 'UTC') = 10) AS h10,\ncountIf(toHour(occurred_at, 'UTC') = 11) AS h11,\ncountIf(toHour(occurred_at, 'UTC') = 12) AS h12,\ncountIf(toHour(occurred_at, 'UTC') = 13) AS h13,\ncountIf(toHour(occurred_at, 'UTC') = 14) AS h14,\ncountIf(toHour(occurred_at, 'UTC') = 15) AS h15,\ncountIf(toHour(occurred_at, 'UTC') = 16) AS h16,\ncountIf(toHour(occurred_at, 'UTC') = 17) AS h17,\ncountIf(toHour(occurred_at, 'UTC') = 18) AS h18,\ncountIf(toHour(occurred_at, 'UTC') = 19) AS h19,\ncountIf(toHour(occurred_at, 'UTC') = 20) AS h20,\ncountIf(toHour(occurred_at, 'UTC') = 21) AS h21,\ncountIf(toHour(occurred_at, 'UTC') = 22) AS h22,\ncountIf(toHour(occurred_at, 'UTC') = 23) AS h23\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at)\nGROUP BY weekday\n) AS buckets ON buckets.weekday = day.number + 1 ORDER BY day.number"
+          "rawSql": "WITH marked AS (\nSELECT session_id, occurred_at, ifNull(screen, '') AS current_screen,\ncount() OVER (PARTITION BY session_id, occurred_at) AS at_same_time\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND name = 'screen_view'\nAND $__timeFilter_ms(occurred_at)\n), ordered AS (\nSELECT current_screen, occurred_at, at_same_time,\nleadInFrame(current_screen, 1, '') OVER visit AS next_screen,\nleadInFrame(occurred_at, 1, toDateTime64(0, 3, 'UTC')) OVER visit AS next_at,\nleadInFrame(at_same_time, 1, toUInt64(0)) OVER visit AS next_same_time\nFROM marked WINDOW visit AS (PARTITION BY session_id ORDER BY occurred_at, current_screen ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)\n)\nSELECT current_screen AS \"Исходный экран\", next_screen AS \"Следующий экран\",\ncount() AS \"Переходы\", round(100.0 * count() / sum(count()) OVER (), 1) AS \"Доля, %\"\nFROM ordered WHERE current_screen != '' AND next_screen != '' AND current_screen != next_screen\nAND at_same_time = 1 AND next_same_time = 1 AND next_at > occurred_at\nGROUP BY current_screen, next_screen ORDER BY \"Переходы\" DESC, current_screen, next_screen LIMIT 15"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
-          "decimals": 0,
-          "noValue": "0",
-          "min": 0,
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "transparent",
-                "value": null
-              },
-              {
-                "color": "#B2EBF2",
-                "value": 1
-              },
-              {
-                "color": "#4DD0E1",
-                "value": 5
-              },
-              {
-                "color": "#0097A7",
-                "value": 10
-              },
-              {
-                "color": "#006064",
-                "value": 50
-              }
-            ]
-          },
           "custom": {
-            "align": "center",
-            "width": 42,
-            "filterable": false,
+            "align": "left",
             "cellOptions": {
-              "type": "color-background",
-              "mode": "basic"
-            }
-          }
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "noValue": "—"
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "День / час UTC"
+              "options": "Переходы"
             },
             "properties": [
               {
-                "id": "custom.width",
-                "value": 120
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
               },
               {
                 "id": "custom.align",
-                "value": "left"
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Доля, %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
               },
               {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "auto"
-                }
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
               }
             ]
           }
@@ -702,7 +688,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT multiIf(name = 'screen_view', 'Открытия экранов', name = 'button_click', 'Нажатия кнопок', name = 'action_success', 'Успешные действия', name) AS \"Тип события\", count() AS \"Количество\"\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at) GROUP BY name ORDER BY count() DESC, name"
+          "rawSql": "SELECT multiIf(name = 'screen_view', 'Открытия экранов', name = 'button_click', 'Нажатия кнопок', name = 'action_success', 'Успешные действия', name) AS \"Тип события\", count() AS \"Количество\"\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) GROUP BY name ORDER BY count() DESC, name"
         }
       ],
       "fieldConfig": {
@@ -828,7 +814,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT ifNull(nullIf(screen, ''), 'Не указан') AS \"Экран\", count() AS \"Открытия\"\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at) AND name = 'screen_view'\nGROUP BY \"Экран\" ORDER BY count() DESC, \"Экран\" LIMIT 100"
+          "rawSql": "SELECT ifNull(nullIf(screen, ''), 'Не указан') AS \"Экран\", count() AS \"Открытия\"\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) AND name = 'screen_view'\nGROUP BY \"Экран\" ORDER BY count() DESC, \"Экран\" LIMIT 100"
         }
       ],
       "fieldConfig": {
@@ -882,7 +868,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT ifNull(nullIf(trimBoth(JSONExtractString(properties, 'button')), ''), 'Не указано') AS \"Кнопка\", ifNull(screen, 'Не указано') AS \"Экран\", count() AS \"Нажатия\" FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at) AND name = 'button_click' GROUP BY \"Кнопка\", screen ORDER BY count() DESC LIMIT 100"
+          "rawSql": "SELECT ifNull(nullIf(trimBoth(JSONExtractString(properties, 'button')), ''), 'Не указано') AS \"Кнопка\", ifNull(screen, 'Не указано') AS \"Экран\", count() AS \"Нажатия\" FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) AND name = 'button_click' GROUP BY \"Кнопка\", screen ORDER BY count() DESC LIMIT 100"
         }
       ],
       "fieldConfig": {
@@ -936,7 +922,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT ifNull(nullIf(trimBoth(JSONExtractString(properties, 'action')), ''), 'Не указано') AS \"Действие\", ifNull(screen, 'Не указано') AS \"Экран\", count() AS \"Количество\" FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at) AND name = 'action_success' GROUP BY \"Действие\", screen ORDER BY count() DESC LIMIT 100"
+          "rawSql": "SELECT ifNull(nullIf(trimBoth(JSONExtractString(properties, 'action')), ''), 'Не указано') AS \"Действие\", ifNull(screen, 'Не указано') AS \"Экран\", count() AS \"Количество\" FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) AND name = 'action_success' GROUP BY \"Действие\", screen ORDER BY count() DESC LIMIT 100"
         }
       ],
       "fieldConfig": {
@@ -990,7 +976,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT platform AS \"Платформа\", count() AS \"События\" FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter(occurred_at) GROUP BY platform ORDER BY count() DESC"
+          "rawSql": "SELECT platform AS \"Платформа\", count() AS \"События\" FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) GROUP BY platform ORDER BY count() DESC"
         }
       ],
       "fieldConfig": {
@@ -1024,7 +1010,7 @@
       "id": 12,
       "title": "Последние 50 событий · весь период хранения",
       "type": "table",
-      "description": "Журнал последних поступивших событий за весь срок хранения. Фильтр периода к этой таблице не применяется.",
+      "description": "Журнал последних поступивших событий за весь срок хранения. Фильтр периода к этой таблице не применяется. Время отображается в часовом поясе пользователя.",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "ulsatracker-clickhouse"
@@ -1044,7 +1030,7 @@
           },
           "queryType": "sql",
           "format": 1,
-          "rawSql": "SELECT received_at AS \"Поступило, UTC\", name AS \"Событие\", screen AS \"Экран\", platform AS \"Платформа\", app_version AS \"Версия\", properties AS \"Свойства\", toString(event_id) AS \"ID\" FROM app.events FINAL WHERE project_id = 'lab3-demo' ORDER BY received_at DESC, event_id LIMIT 50"
+          "rawSql": "SELECT received_at AS \"Поступило\", name AS \"Событие\", screen AS \"Экран\", platform AS \"Платформа\", app_version AS \"Версия\", properties AS \"Свойства\", toString(event_id) AS \"ID\" FROM app.events FINAL WHERE project_id = 'lab3-demo' ORDER BY received_at DESC, event_id LIMIT 50"
         }
       ],
       "fieldConfig": {

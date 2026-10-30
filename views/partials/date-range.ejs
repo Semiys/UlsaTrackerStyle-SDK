@@ -1,0 +1,25 @@
+<section class="analytics-toolbar" aria-label="Настройки статистики">
+  <button class="button secondary range-trigger" id="range-trigger" type="button" aria-haspopup="dialog" aria-controls="range-dialog">
+    <span>Период: <span id="range-label">Текущий день</span></span>
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+  </button>
+  <p class="muted small">Шаг графиков зависит от периода · <span data-device-timezone>Время устройства</span> · обновление каждые 30 с</p>
+</section>
+<dialog id="range-dialog" class="range-dialog" aria-labelledby="range-title">
+  <form id="range-form" novalidate>
+    <header class="range-heading"><h2 id="range-title">Период статистики</h2><span class="muted small">Часовой пояс: <span data-device-timezone>время устройства</span></span></header>
+    <div class="range-inputs">
+      <label for="range-from">Начало<input id="range-from" type="text" autocomplete="off" spellcheck="false" placeholder="ДД.ММ.ГГГГ ЧЧ:ММ:СС" aria-describedby="range-error"></label>
+      <label for="range-to">Окончание<input id="range-to" type="text" autocomplete="off" spellcheck="false" placeholder="ДД.ММ.ГГГГ ЧЧ:ММ:СС" aria-describedby="range-error"></label>
+    </div>
+    <div class="range-body">
+      <div class="range-calendar-area">
+        <div class="range-navigation"><button class="range-month-nav" type="button" id="range-previous" aria-label="Предыдущий месяц"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12 5-5 5 5 5"/></svg></button><p class="small muted" id="range-selection-hint" aria-live="polite">Выберите начало и конец периода</p><button class="range-month-nav" type="button" id="range-next" aria-label="Следующий месяц"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5"/></svg></button></div>
+        <div class="range-calendars" id="range-calendars"></div>
+      </div>
+      <div class="range-presets" id="range-presets" role="group" aria-label="Быстрый выбор периода"></div>
+    </div>
+    <p class="range-error" id="range-error" role="alert" hidden></p>
+    <footer class="range-footer"><span class="muted small" id="range-limit-hint">Можно ввести даты вручную. Максимум — 366 дней.</span><div><button class="button secondary" id="range-cancel" type="button">Отменить</button><button class="button" type="submit">Применить</button></div></footer>
+  </form>
+</dialog>

@@ -11,6 +11,11 @@ export function sessionMiddleware(accounts, config) {
   return (req, res, next) => {
     const raw = cookieValue(req, 'ulsa_session');
     req.accountSession = accounts.session(raw);
+    // Account pages and authenticated HTML/JSON can contain one-time sending
+    // keys and private project metadata; shared/browser caches must not retain it.
+    if (req.accountSession || /^\/(?:console|login|register)(?:\/|$)/.test(req.path)) {
+      res.set('Cache-Control', 'private, no-store');
+    }
     req.sessionToken = raw;
     res.locals.consoleEnabled = true;
     res.locals.currentUser = req.accountSession?.user ?? null;

@@ -1,0 +1,110 @@
+<%- include('partials/head', { title: 'Инструкция по подключению' }) %>
+<main class="guide-main" id="guide-main">
+  <section class="guide-intro">
+    <p class="eyebrow">Первое подключение</p>
+    <h1>Создайте проект и подключите SDK</h1>
+    <p class="description">Добавьте своё приложение, получите ключ и проверьте первое нажатие в статистике. Выберите Android или JavaScript — порядок создания проекта одинаковый.</p>
+    <div class="page-actions">
+      <% if (consoleEnabled) { %><a class="button" href="<%= currentUser ? '/console' : '/register' %>"><%= currentUser ? 'Открыть мои проекты' : 'Создать аккаунт' %></a><% } %>
+      <a class="button secondary" href="#android">Подключить Android</a><a class="button secondary" href="#javascript">Подключить сайт</a>
+    </div>
+    <p class="muted small guide-version">Kotlin SDK 0.2.0 · JavaScript SDK 0.1.0 · Android 8.0 и новее. Готового адаптера iOS пока нет.</p>
+  </section>
+
+  <div class="guide-layout">
+    <nav class="guide-toc" aria-label="Содержание инструкции">
+      <p class="eyebrow">На этой странице</p>
+      <a href="#project">1. Проект и приложение</a><a href="#key">2. Ключ отправки</a><a href="#address">3. Адрес сервера</a><a href="#android">4. Android</a><a href="#javascript">5. JavaScript</a><a href="#verify">6. Первое событие</a><a href="#event-types">Какие события отправлять</a><a href="#troubleshooting">Если не получилось</a>
+    </nav>
+    <div class="guide-content">
+      <section class="guide-section" id="project">
+        <p class="eyebrow">Шаг 1</p><h2>Создайте проект и приложение</h2>
+        <p>Проект объединяет приложения одного продукта. Например, Android-версия и сайт могут находиться в одном проекте, но каждое приложение получает собственный ключ и отдельную статистику.</p>
+        <% if (consoleEnabled) { %>
+        <ol class="guide-steps"><li>Нажмите «Создать аккаунт» или «Войти». Для регистрации нужны имя, почта и пароль от 12 до 128 символов.</li><li>В кабинете найдите форму «Новый проект», укажите название и нажмите «Создать проект».</li><li>Откройте созданный проект. В форме «Новое приложение» укажите название, платформу и идентификатор, затем нажмите «Добавить приложение».</li></ol>
+        <div class="page-actions"><a class="button secondary" href="<%= currentUser ? '/console' : '/register' %>"><%= currentUser ? 'Мои проекты' : 'Регистрация' %></a><% if (!currentUser) { %><a class="button secondary" href="/login">Уже есть аккаунт</a><% } %></div>
+        <% } else { %><p class="guide-note">На этом сервере кабинет недоступен. Попросите владельца сервера создать приложение и передать вам его ключ отправки.</p><% } %>
+        <div class="guide-table" tabindex="0" role="region" aria-label="Идентификаторы приложений"><table><thead><tr><th>Платформа</th><th>Что указать</th><th>Пример</th></tr></thead><tbody><tr><td>Android</td><td>Значение <code>applicationId</code> из Gradle-модуля приложения</td><td><code>com.example.app</code></td></tr><tr><td>Web</td><td>Origin сайта: протокол, домен и порт, без пути</td><td><code>https://example.org</code></td></tr></tbody></table></div>
+        <p class="muted small">Для Web указывайте адрес сайта, который отправляет события. Адрес сервера аналитики может быть другим. <code>localhost</code> и <code>127.0.0.1</code> — разные origin.</p>
+      </section>
+
+      <section class="guide-section" id="key">
+        <p class="eyebrow">Шаг 2</p><h2>Сохраните ключ отправки</h2>
+        <p>После создания приложения на его странице появится полный ключ. Нажмите «Скопировать ключ» и сохраните его: полностью он показывается один раз.</p>
+        <p>В примерах ниже замените <code>ВАШ_КЛЮЧ_ОТПРАВКИ</code> полученным значением целиком. Пароль кабинета и ключ чтения для этого не подходят.</p>
+        <p class="guide-note">Если ключ потерян, откройте приложение в кабинете и нажмите «Заменить ключ». Старый ключ сразу перестанет принимать события; новый нужно обновить в подключённых клиентах.</p>
+        <p class="muted small">Ключ отправки доступен внутри APK или браузерного кода и разрешает только приём событий этого приложения. Не вставляйте его в адрес страницы, скриншоты или публичные примеры.</p>
+      </section>
+
+      <section class="guide-section" id="address">
+        <p class="eyebrow">Шаг 3</p><h2>Выберите доступный клиенту адрес</h2>
+        <p>Адрес этого сервера: <code><%= guideEndpoint %></code>. В примерах он уже подставлен. Укажите только протокол, хост и порт — без <code>/api/v1/events</code> и других путей.</p>
+        <div class="guide-table" tabindex="0" role="region" aria-label="Способы подключения к серверу"><table><thead><tr><th>Откуда отправляются события</th><th>Как подключиться</th></tr></thead><tbody><tr><td>Телефон и компьютер в одной Wi-Fi сети</td><td>В endpoint укажите IP компьютера, например <code>http://192.168.0.90:8080</code>. Docker должен работать, порт — быть доступным в этой частной сети.</td></tr><tr><td>Телефон по USB</td><td>Для endpoint <code>http://127.0.0.1:8080</code> настройте ADB reverse командой ниже.</td></tr><tr><td>Мобильный интернет или другая сеть</td><td>Используйте доступный извне HTTPS-адрес своего сервера.</td></tr></tbody></table></div>
+        <%- include('partials/guide-code', { id: 'guide-usb', label: 'Терминал компьютера · только для USB', source: examples.reverse }) %>
+        <p class="guide-note">На телефоне <code>localhost</code> указывает на телефон. USB нужен выбранному способу установки и отладки; сама SDK передаёт события по сети. После установки APK можно использовать Wi-Fi без кабеля.</p>
+      </section>
+
+      <section class="guide-section" id="android">
+        <p class="eyebrow">Android · Kotlin SDK 0.2.0</p><h2>Подключите Android-приложение</h2>
+        <p>Поддерживается Android API 26+. Для сборки текущих исходников SDK используются JDK 21, Android SDK 37, Kotlin 2.4.0 и AGP 9.1.1. Библиотека ещё не опубликована в Maven: пока подключается локальный модуль исходников.</p>
+        <h3>1. Получите исходники SDK</h3><p>Склонируйте репозиторий рядом с папкой своего Android-проекта или скачайте его средствами GitHub. Следующий пример предполагает, что папки вашего приложения и <code>UlsaTrackerStyle-SDK</code> находятся рядом.</p>
+        <%- include('partials/guide-code', { id: 'guide-clone', label: 'Терминал', source: examples.clone }) %>
+        <div class="page-actions"><a class="button secondary" href="https://github.com/Semiys/UlsaTrackerStyle-SDK" target="_blank" rel="noopener noreferrer">Открыть исходники SDK</a></div>
+        <h3>2. Подключите Gradle-модуль</h3><p>Добавьте блоки в указанные файлы своего проекта. Если SDK находится в другом месте, замените путь в <code>includeBuild</code>.</p>
+        <%- include('partials/guide-code', { id: 'guide-settings', label: 'settings.gradle.kts · корень Android-проекта', source: examples.settings }) %>
+        <%- include('partials/guide-code', { id: 'guide-dependency', label: 'build.gradle.kts · модуль приложения', source: examples.dependency }) %>
+        <p class="muted small">В <code>sdk/kotlin/local.properties</code> исходников SDK укажите <code>sdk.dir</code> с путём к Android SDK на вашем компьютере. Composite build не наследует этот путь из приложения. Затем выполните Gradle Sync.</p>
+        <h3>3. Создайте один экземпляр в Application</h3><p>Ниже полный пример нового класса. Замените package, ключ и endpoint на свои. Если у приложения уже есть собственный класс <code>Application</code>, перенесите инициализацию в него и используйте его существующий экземпляр SDK.</p>
+        <%- include('partials/guide-code', { id: 'guide-application', label: 'AnalyticsApplication.kt · пример класса', source: examples.application }) %>
+        <p>В существующем manifest добавьте разрешение интернета и укажите свой класс Application. Сохраните остальные настройки и Activity; второй элемент <code>application</code> создавать не нужно.</p>
+        <%- include('partials/guide-code', { id: 'guide-manifest', label: 'src/main/AndroidManifest.xml · нужные элементы', source: examples.manifest }) %>
+        <% if (guideEndpoint.startsWith('http:')) { %><details class="guide-details"><summary>Локальная проверка по HTTP</summary><p>Для локального HTTP оставьте <code>allowHttp = true</code> в TrackerConfig и разрешите HTTP только в debug manifest. Для публичного сервера используйте HTTPS и уберите это разрешение.</p><%- include('partials/guide-code', { id: 'guide-debug-manifest', label: 'src/debug/AndroidManifest.xml', source: examples.debugManifest }) %></details><% } %>
+        <h3>4. Отмечайте посещения и нажатия</h3><p>Пример для проекта с уже включённым Jetpack Compose и подключённым Material 3. Посещение отмечается в <code>LaunchedEffect</code>, а клик — в обработчике кнопки. Вызов в теле composable повторялся бы при перерисовках.</p>
+        <%- include('partials/guide-code', { id: 'guide-compose', label: 'HomeScreen.kt · пример Compose', source: examples.compose }) %>
+        <%- include('partials/guide-code', { id: 'guide-activity', label: 'ComponentActivity · фрагмент существующего onCreate', source: examples.activity }) %>
+        <p>В обычном Android-интерфейсе вызывайте те же <code>tracker.screen</code> и <code>tracker.click</code> в обработчиках своего экрана. Добавляйте вызов в каждую нужную кнопку; автоматического сбора всех касаний здесь нет.</p>
+        <details class="guide-details"><summary>В приложении уже есть подготовленный адаптер SDK</summary><p>Если Gradle-код вашего приложения уже читает эти параметры, достаточно заполнить его локальные настройки и пересобрать APK. Не создавайте второй tracker. Эти строки не подключают SDK сами по себе — они относятся к заранее реализованному адаптеру приложения.</p><%- include('partials/guide-code', { id: 'guide-prepared', label: 'local.properties · только для подготовленного адаптера', source: examples.prepared }) %><p>Сохраните остальные строки файла и используйте свой путь к SDK. При изменении ключа или endpoint установленный APK нужно пересобрать и обновить.</p></details>
+        <div class="page-actions"><a class="button secondary" href="#verify">Проверить Android-событие</a></div>
+      </section>
+
+      <section class="guide-section" id="javascript">
+        <p class="eyebrow">Web · JavaScript SDK 0.1.0</p><h2>Подключите сайт</h2>
+        <ol class="guide-steps"><li>Создайте Web-приложение в кабинете и укажите точный origin сайта, на котором будет выполняться этот код.</li><li>Добавьте SDK и свой файл <code>analytics.js</code> на страницу. Идентификатор тестовой кнопки можно заменить на идентификатор вашей кнопки.</li><li>В <code>analytics.js</code> подставьте ключ и адрес сервера, затем откройте страницу сайта.</li></ol>
+        <%- include('partials/guide-code', { id: 'guide-html', label: 'HTML-страница вашего сайта', source: examples.html }) %>
+        <%- include('partials/guide-code', { id: 'guide-javascript', label: 'analytics.js · файл вашего сайта', source: examples.javascript }) %>
+        <p class="muted small">Проверьте правила CSP своего сайта: они должны разрешать загрузку SDK и запросы к серверу аналитики. На HTTPS-сайте подключайте сервер по HTTPS. Содержимое форм, URL и все клики автоматически не собираются.</p>
+        <details class="guide-details"><summary>Альтернатива: ES module</summary><p>Этот вариант заменяет подключение обычного скрипта. Используйте его в модуле своего сайта; не создавайте два tracker для одного подключения.</p><%- include('partials/guide-code', { id: 'guide-module', label: 'JavaScript module', source: examples.module }) %><p>Локальный npm-пакет находится в <code>sdk/js</code> репозитория. Публикации в публичном npm пока нет.</p></details>
+        <% if (consoleEnabled) { %><div class="page-actions"><a class="button secondary" href="/sdk-demo">Открыть проверку JavaScript SDK</a></div><p class="muted small">Для этой страницы создайте отдельное Web-приложение с origin <code><%= guideEndpoint %></code>. Ключ сайта с другим origin для неё не подходит.</p><% } %>
+      </section>
+
+      <section class="guide-section" id="verify">
+        <p class="eyebrow">Проверка подключения</p><h2>Найдите первое событие</h2>
+        <ol class="guide-steps"><li>Соберите и установите Android-приложение либо откройте страницу своего сайта.</li><li>Один раз нажмите тестовую кнопку «Добавить предмет».</li><li>В кабинете откройте проект, нужное приложение и нажмите «Открыть статистику».</li><li>Подождите до минуты с учётом пакетной отправки и обновления панели раз в 30 секунд. Найдите новую запись в «Последние 50 событий» и строку в таблице «Нажатия кнопок».</li></ol>
+        <div class="guide-table" tabindex="0" role="region" aria-label="Ожидаемые события примера"><table><thead><tr><th>Действие</th><th>Ожидаемая запись</th></tr></thead><tbody><tr><td>Открыть экран примера</td><td><code>screen_view</code>, экран <code>home</code></td></tr><tr><td>Нажать «Добавить предмет»</td><td><code>button_click</code>, экран <code>home</code>, свойство <code>button: add_item</code></td></tr></tbody></table></div>
+        <p class="guide-note">Новые приложения показывают события своего ключа. Общая демонстрационная панель не отображает данные вашего отдельного приложения. Серверная кнопка «Отправить тестовое событие» проверяет БД и графики; работу SDK подтверждает действие на телефоне или вашем сайте.</p>
+        <% if (consoleEnabled) { %><div class="page-actions"><a class="button" href="<%= currentUser ? '/console' : '/login' %>">Открыть кабинет</a></div><% } %>
+      </section>
+
+      <section class="guide-section" id="event-types">
+        <h2>Нажатие и успешное действие</h2>
+        <p>Пять нажатий «Сохранить» не обязательно означают пять сохранённых предметов. Пользователь мог получить ошибку обязательного поля. Поэтому <code>button_click</code> отмечайте при нажатии, а <code>action_success</code> — после подтверждённого результата операции.</p>
+        <p>Следующие фрагменты добавьте после успешного сохранения в своём приложении, а не перед ним:</p>
+        <%- include('partials/guide-code', { id: 'guide-success-android', label: 'Kotlin · фрагмент после сохранения', source: examples.successAndroid }) %>
+        <%- include('partials/guide-code', { id: 'guide-success-web', label: 'JavaScript · фрагмент после сохранения', source: examples.successWeb }) %>
+        <p class="muted small">Выбирайте постоянные имена, например <code>add_item</code>. Не подставляйте в имена событий или свойства пароли, тексты форм и сведения о предметах коллекции. Успешный приём команды в очередь SDK ещё не означает подтверждение записи на сервере.</p>
+      </section>
+
+      <section class="guide-section" id="troubleshooting">
+        <h2>Если событие не появилось</h2>
+        <p class="guide-note">Счётчик «События» складывает нажатия, открытия экранов и другие события. Например, три перехода между экранами обычно дают три нажатия и три открытия. Чтобы посчитать только нажатия, смотрите «Нажатия кнопок». SDK отправляет данные пакетами: вместе с новым действием могут прийти ранее накопленные события. Проверяйте время совершения события в журнале.</p>
+
+        <details class="guide-details"><summary>Сайт открывается на компьютере, но телефон не видит сервер</summary><p>Откройте на телефоне <code>http://IP_КОМПЬЮТЕРА:8080/health</code>. Оба устройства должны находиться в одной доступной Wi-Fi сети. Проверьте IP компьютера, гостевую изоляцию Wi-Fi, доступ к частной сети в VPN и брандмауэре. Для USB повторите ADB reverse после переподключения.</p></details>
+        <details class="guide-details"><summary>Сеть доступна, но событий всё равно нет</summary><p>Проверьте полный ключ отправки, платформу приложения и выбранную статистику. После изменения ключа или endpoint пересоберите Android APK. Если используете подготовленный debug-адаптер, сбор из магазина или release может быть выключен. Подождите минуту, а после отсутствия связи — до двух минут.</p></details>
+        <details class="guide-details"><summary>JavaScript получает отказ при отправке</summary><p>Origin страницы должен точно совпадать с настройкой Web-приложения, включая протокол и порт. Открытие HTML как локального файла не заменяет запуск сайта через HTTP. Проверьте CSP сайта и доступность адреса SDK.</p></details>
+        <details class="guide-details"><summary>Кликов оказалось больше ожидаемого</summary><p>Проверьте, не вызвана ли аналитика дважды в общей кнопке и её обработчике. Создайте один tracker на подключение. Посещение экрана в Compose размещайте в эффекте, привязанном к посещению, а не непосредственно в теле composable. Сеансы и клики не равны числу уникальных людей.</p></details>
+        <div class="page-actions"><a class="button secondary" href="#project">Вернуться к началу инструкции</a><a class="button secondary" href="/">На главную</a></div>
+      </section>
+    </div>
+  </div>
+</main>
+<%- include('partials/foot') %>

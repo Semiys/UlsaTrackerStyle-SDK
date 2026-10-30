@@ -164,3 +164,19 @@ test('ClickHouse serves the four existing pages, real form, refusal and mobile A
     assert.equal((await f.store.stats(f.project, 7)).totals.events, 2);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
+
+
+test('all-time boundary includes history older than a year and isolates empty and foreign projects', options, async t => {
+  const f = await fixture(t);
+  assert.equal(await f.store.firstEventAt(f.project), null);
+  const first = Date.parse('2010-02-03T12:34:56.123Z');
+  const row = (project_id, at) => ({ project_id, event_id: randomUUID(), session_id: randomUUID(),
+    occurred_at: new Date(at).toISOString(), name: 'screen_view', screen: 'all_time', platform: 'web',
+    app_version: 'test', properties: '{}', payload_hash: '0'.repeat(64) });
+  const oldest = row(f.project, first);
+  await f.store.client.insert({ table: 'events', format: 'JSONEachRow', values: [oldest, oldest,
+    row(f.project, Date.now() - 1000), row(f.project + '_other', Date.parse('2000-01-01T00:00:00Z'))],
+    clickhouse_settings: { date_time_input_format: 'best_effort' } });
+  assert.equal(await f.store.firstEventAt(f.project), first);
+  assert.equal(await f.store.firstEventAt(f.project + '_empty'), null);
+});

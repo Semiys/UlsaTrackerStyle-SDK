@@ -1,6 +1,6 @@
 {
   "name": "ulsa-tracker-style-sdk",
-  "version": "0.7.5",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "description": "UlsaTrackerStyle SDK — сервис продуктовой аналитики для мобильных приложений",
@@ -8,8 +8,9 @@
     "start": "node src/server.js",
     "test": "node --test test/*.test.js",
     "test:lab2": "node --test test/json-store.test.js test/pages.test.js",
-    "test:lab4": "node --test test/json-store.test.js test/pages.test.js test/clickhouse-store.test.js test/grafana.test.js test/grafana-periods.test.js test/accounts.test.js test/js-sdk.test.js test/console-integration.test.js test/startup.test.js",
-    "test:lab3": "node --test test/json-store.test.js test/pages.test.js test/clickhouse-store.test.js"
+    "test:lab4": "node --test test/json-store.test.js test/pages.test.js test/guide.test.js test/clickhouse-store.test.js test/grafana.test.js test/grafana-periods.test.js test/grafana-short-period.test.js test/dashboard-controls.test.js test/date-range.test.js test/timezone.test.js test/grafana-timezone.test.js test/grafana-flow.test.js test/accounts.test.js test/js-sdk.test.js test/console-integration.test.js test/startup.test.js",
+    "test:lab3": "node --test test/json-store.test.js test/pages.test.js test/clickhouse-store.test.js",
+    "test:release": "node --test --test-concurrency=1 test/json-store.test.js test/pages.test.js test/guide.test.js test/clickhouse-store.test.js test/grafana.test.js test/grafana-periods.test.js test/grafana-short-period.test.js test/dashboard-controls.test.js test/date-range.test.js test/timezone.test.js test/grafana-timezone.test.js test/grafana-flow.test.js test/accounts.test.js test/js-sdk.test.js test/console-integration.test.js test/startup.test.js test/csv-export.test.js test/csv-integration.test.js"
   },
   "engines": {
     "node": "24.21.0"
