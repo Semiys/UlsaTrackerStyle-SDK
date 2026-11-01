@@ -1,0 +1,1065 @@
+{
+  "uid": "ulsatracker",
+  "title": "UlsaTrackerStyle SDK 0.10.1",
+  "description": "Динамика и сравнение активности, переходы между экранами, типы событий и точные значения по экранам и кнопкам. Сессии не равны пользователям.",
+  "tags": [
+    "UlsaTrackerStyle",
+    "analytics"
+  ],
+  "schemaVersion": 39,
+  "version": 6,
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now/d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ],
+    "hidden": true
+  },
+  "templating": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Главная сервиса",
+      "type": "link",
+      "url": "http://localhost:8080/",
+      "targetBlank": true,
+      "icon": "external link"
+    },
+    {
+      "title": "Отправить событие",
+      "type": "link",
+      "url": "http://localhost:8080/events/new",
+      "targetBlank": true,
+      "icon": "external link"
+    },
+    {
+      "title": "Пример отказа",
+      "type": "link",
+      "url": "http://localhost:8080/error",
+      "targetBlank": true,
+      "icon": "external link"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "События",
+      "type": "stat",
+      "description": "Все события: нажатия, открытия экранов, успешные действия и события с пользовательскими названиями. Один переход обычно создаёт нажатие и открытие экрана. SDK отправляет события пакетами, поэтому счётчик может увеличиться сразу на несколько.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT count() AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "0",
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Сессии с событиями",
+      "type": "stat",
+      "description": "Количество различных session_id, у которых есть событие в выбранном периоде. Сессии не равны числу уникальных пользователей.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT uniqExact(session_id) AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "0",
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Открытия экранов",
+      "type": "stat",
+      "description": "Количество событий screen_view за выбранный период. Повторные открытия учитываются.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT countIf(name = 'screen_view') AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "0",
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Нажатия кнопок",
+      "type": "stat",
+      "description": "Количество событий button_click за выбранный период. Это число нажатий, а не уникальных пользователей.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT countIf(name = 'button_click') AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "0",
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Успешные действия",
+      "type": "stat",
+      "description": "Количество событий action_success, отправленных приложением за выбранный период.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 19,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT countIf(name = 'action_success') AS value FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "0",
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Динамика событий",
+      "type": "timeseries",
+      "description": "Количество событий за интервал. Короткие интервалы измеряются секундами, минутами и часами; длинные группируются по календарным дням часового пояса пользователя, включая сутки при переводе часов. Пустые интервалы показаны нулями, крайние могут быть неполными. Все события включают открытия, нажатия и успешные действия.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 0,
+          "rawSql": "WITH $__fromTime_ms AS range_from, $__toTime_ms AS range_to,\n'$__timezone' AS zone,\ndateDiff('second', range_from, range_to) AS span_seconds,\nmultiIf(span_seconds <= 60, 1, span_seconds <= 3600, 60, span_seconds <= 172800, 3600, 86400) AS step_seconds,\nstep_seconds * 1000 AS step_ms,\ntimezoneOffset(toTimeZone(range_from, zone)) * 1000 AS offset_ms,\nif(step_seconds = 86400,\n  toUnixTimestamp64Milli(toDateTime64(toStartOfDay(range_from, zone), 3)),\n  intDiv(toUnixTimestamp64Milli(range_from) + offset_ms, step_ms) * step_ms - offset_ms) AS first_bucket,\n(ts -> if(step_seconds = 86400,\n  toUnixTimestamp64Milli(toDateTime64(toStartOfDay(ts, zone), 3)),\n  first_bucket + intDiv(toUnixTimestamp64Milli(ts) - first_bucket, step_ms) * step_ms)) AS bucketAt,\nif(step_seconds = 86400, dateDiff('day', range_from, range_to, zone) + 1,\n  intDiv(toUnixTimestamp64Milli(range_to) - first_bucket, step_ms) + 1) AS bucket_count,\nbuckets AS (\n  SELECT if(step_seconds = 86400,\n    toUnixTimestamp64Milli(addDays(fromUnixTimestamp64Milli(first_bucket, zone), toInt32(number))),\n    first_bucket + toInt64(number) * step_ms) AS bucket\n  FROM numbers(toUInt64(greatest(bucket_count, 1)))\n), counts AS (\n  SELECT bucketAt(occurred_at) AS bucket, count() AS total,\n    countIf(name = 'screen_view') AS views, countIf(name = 'button_click') AS clicks,\n    countIf(name = 'action_success') AS successes\n  FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at)\n  GROUP BY bucket\n)\nSELECT fromUnixTimestamp64Milli(greatest(b.bucket, toUnixTimestamp64Milli(range_from)), 'UTC') AS time,\n  ifNull(c.total, 0) AS \"Все события\", ifNull(c.views, 0) AS \"Открытия экранов\",\n  ifNull(c.clicks, 0) AS \"Нажатия кнопок\", ifNull(c.successes, 0) AS \"Успешные действия\"\nFROM buckets AS b LEFT JOIN counts AS c ON b.bucket = c.bucket ORDER BY b.bucket"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "Нет событий",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "spanNulls": false,
+            "showPoints": "always",
+            "pointSize": 6,
+            "axisLabel": "Количество",
+            "axisPlacement": "left",
+            "axisSoftMax": 2,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "unit": "none",
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Все события"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#0097A7"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Открытия экранов"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5470C6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Нажатия кнопок"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9A60B4"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Успешные действия"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#388E3C"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Сравнение с предыдущим периодом",
+      "type": "timeseries",
+      "description": "Текущий отрезок и непосредственно предыдущий отрезок той же реальной длительности. Предыдущие события сдвинуты на текущую шкалу. Дневные интервалы соответствуют часовому поясу пользователя; крайние интервалы могут быть неполными.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 0,
+          "rawSql": "WITH $__fromTime_ms AS range_from, $__toTime_ms AS range_to,\n'$__timezone' AS zone,\ndateDiff('second', range_from, range_to) AS span_seconds,\nmultiIf(span_seconds <= 60, 1, span_seconds <= 3600, 60, span_seconds <= 172800, 3600, 86400) AS step_seconds,\nstep_seconds * 1000 AS step_ms,\ntimezoneOffset(toTimeZone(range_from, zone)) * 1000 AS offset_ms,\nif(step_seconds = 86400,\n  toUnixTimestamp64Milli(toDateTime64(toStartOfDay(range_from, zone), 3)),\n  intDiv(toUnixTimestamp64Milli(range_from) + offset_ms, step_ms) * step_ms - offset_ms) AS first_bucket,\n(ts -> if(step_seconds = 86400,\n  toUnixTimestamp64Milli(toDateTime64(toStartOfDay(ts, zone), 3)),\n  first_bucket + intDiv(toUnixTimestamp64Milli(ts) - first_bucket, step_ms) * step_ms)) AS bucketAt,\nif(step_seconds = 86400, dateDiff('day', range_from, range_to, zone) + 1,\n  intDiv(toUnixTimestamp64Milli(range_to) - first_bucket, step_ms) + 1) AS bucket_count,\ngreatest(toUnixTimestamp64Milli(range_to) - toUnixTimestamp64Milli(range_from), 1) AS shift_ms,\naddMilliseconds(range_from, -shift_ms) AS previous_from,\nbuckets AS (\n  SELECT if(step_seconds = 86400,\n    toUnixTimestamp64Milli(addDays(fromUnixTimestamp64Milli(first_bucket, zone), toInt32(number))),\n    first_bucket + toInt64(number) * step_ms) AS bucket\n  FROM numbers(toUInt64(greatest(bucket_count, 1)))\n), counts AS (\n  SELECT bucketAt(if(occurred_at >= range_from, occurred_at, addMilliseconds(occurred_at, shift_ms))) AS bucket,\n    countIf(occurred_at >= range_from AND occurred_at <= range_to) AS current_count,\n    countIf(occurred_at >= previous_from AND occurred_at < range_from) AS previous_count\n  FROM app.events FINAL WHERE project_id = 'lab3-demo'\n    AND ((occurred_at >= range_from AND occurred_at <= range_to) OR (occurred_at >= previous_from AND occurred_at < range_from))\n  GROUP BY bucket\n)\nSELECT fromUnixTimestamp64Milli(greatest(b.bucket, toUnixTimestamp64Milli(range_from)), 'UTC') AS time,\n  ifNull(c.current_count, 0) AS \"Выбранный период\", ifNull(c.previous_count, 0) AS \"Предыдущий период\"\nFROM buckets AS b LEFT JOIN counts AS c ON b.bucket = c.bucket ORDER BY b.bucket"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "Нет событий",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 3,
+            "spanNulls": false,
+            "showPoints": "always",
+            "pointSize": 6,
+            "axisLabel": "Количество",
+            "axisPlacement": "left",
+            "axisSoftMax": 2,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "unit": "none",
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Выбранный период"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#0097A7"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Предыдущий период"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9A60B4"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Переходы между экранами",
+      "type": "table",
+      "description": "15 самых частых переходов между разными экранами. Пара строится по двум последовательным screen_view одной сессии; оба события должны входить в выбранный период. Одиночные просмотры, пустые экраны, повтор одного экрана и неоднозначный порядок при одинаковом времени пропускаются. Доля считается от всех подходящих переходов до ограничения 15 строк. Это наблюдаемые переходы, не воронка и не уникальные пользователи.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "WITH marked AS (\nSELECT session_id, occurred_at, ifNull(screen, '') AS current_screen,\ncount() OVER (PARTITION BY session_id, occurred_at) AS at_same_time\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND name = 'screen_view'\nAND $__timeFilter_ms(occurred_at)\n), ordered AS (\nSELECT current_screen, occurred_at, at_same_time,\nleadInFrame(current_screen, 1, '') OVER visit AS next_screen,\nleadInFrame(occurred_at, 1, toDateTime64(0, 3, 'UTC')) OVER visit AS next_at,\nleadInFrame(at_same_time, 1, toUInt64(0)) OVER visit AS next_same_time\nFROM marked WINDOW visit AS (PARTITION BY session_id ORDER BY occurred_at, current_screen ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)\n)\nSELECT current_screen AS \"Исходный экран\", next_screen AS \"Следующий экран\",\ncount() AS \"Переходы\", round(100.0 * count() / sum(count()) OVER (), 1) AS \"Доля, %\"\nFROM ordered WHERE current_screen != '' AND next_screen != '' AND current_screen != next_screen\nAND at_same_time = 1 AND next_same_time = 1 AND next_at > occurred_at\nGROUP BY current_screen, next_screen ORDER BY \"Переходы\" DESC, current_screen, next_screen LIMIT 15"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "noValue": "—"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Переходы"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Доля, %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Типы событий",
+      "type": "piechart",
+      "description": "Доля каждого типа в общем количестве событий выбранного периода. Точное количество и доля указаны в легенде.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT multiIf(name = 'screen_view', 'Открытия экранов', name = 'button_click', 'Нажатия кнопок', name = 'action_success', 'Успешные действия', name) AS \"Тип события\", count() AS \"Количество\"\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) GROUP BY name ORDER BY count() DESC, name"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет событий",
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Открытия экранов"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5470C6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Нажатия кнопок"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9A60B4"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Успешные действия"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#388E3C"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": [],
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "rowsToFields",
+          "options": {
+            "mappings": [
+              {
+                "fieldName": "Тип события",
+                "handlerKey": "field.name"
+              },
+              {
+                "fieldName": "Количество",
+                "handlerKey": "field.value"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Популярные экраны",
+      "type": "table",
+      "description": "До 100 экранов, сначала самые посещаемые. Учитываются только события открытия экрана в выбранном периоде.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 34,
+        "w": 14,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT ifNull(nullIf(screen, ''), 'Не указан') AS \"Экран\", count() AS \"Открытия\"\nFROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) AND name = 'screen_view'\nGROUP BY \"Экран\" ORDER BY count() DESC, \"Экран\" LIMIT 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "Нет событий",
+          "unit": "none",
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Нажатия кнопок",
+      "type": "table",
+      "description": "До 100 сочетаний кнопки и экрана, сначала самые частые. Названия можно искать через фильтр столбца.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT ifNull(nullIf(trimBoth(JSONExtractString(properties, 'button')), ''), 'Не указано') AS \"Кнопка\", ifNull(screen, 'Не указано') AS \"Экран\", count() AS \"Нажатия\" FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) AND name = 'button_click' GROUP BY \"Кнопка\", screen ORDER BY count() DESC LIMIT 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "Нет событий",
+          "unit": "none",
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Успешные действия",
+      "type": "table",
+      "description": "До 100 сочетаний действия и экрана за выбранный период. Считаются события action_success, переданные приложением.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 42,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT ifNull(nullIf(trimBoth(JSONExtractString(properties, 'action')), ''), 'Не указано') AS \"Действие\", ifNull(screen, 'Не указано') AS \"Экран\", count() AS \"Количество\" FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) AND name = 'action_success' GROUP BY \"Действие\", screen ORDER BY count() DESC LIMIT 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "Нет событий",
+          "unit": "none",
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Платформы",
+      "type": "table",
+      "description": "Количество событий с каждой платформы за выбранный период.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT platform AS \"Платформа\", count() AS \"События\" FROM app.events FINAL WHERE project_id = 'lab3-demo' AND $__timeFilter_ms(occurred_at) GROUP BY platform ORDER BY count() DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "Нет событий",
+          "unit": "none",
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Последние 50 событий · весь период хранения",
+      "type": "table",
+      "description": "Журнал последних поступивших событий за весь срок хранения. Фильтр периода к этой таблице не применяется. Время отображается в часовом поясе пользователя.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "ulsatracker-clickhouse"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 50,
+        "w": 16,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ulsatracker-clickhouse"
+          },
+          "queryType": "sql",
+          "format": 1,
+          "rawSql": "SELECT received_at AS \"Поступило\", name AS \"Событие\", screen AS \"Экран\", platform AS \"Платформа\", app_version AS \"Версия\", properties AS \"Свойства\", toString(event_id) AS \"ID\" FROM app.events FINAL WHERE project_id = 'lab3-demo' ORDER BY received_at DESC, event_id LIMIT 50"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#0097A7"
+          },
+          "noValue": "Нет событий",
+          "unit": "none",
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ],
+  "graphTooltip": 1
+}

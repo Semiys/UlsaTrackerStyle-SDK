@@ -1,0 +1,28 @@
+<clickhouse>
+  <profiles>
+    <grafana_readonly>
+      <readonly>1</readonly>
+      <max_execution_time>60</max_execution_time>
+      <max_threads>2</max_threads>
+      <max_memory_usage>268435456</max_memory_usage>
+      <max_result_rows>10000</max_result_rows>
+      <max_result_bytes>8388608</max_result_bytes>
+      <result_overflow_mode>throw</result_overflow_mode>
+      <constraints>
+        <max_execution_time><min>1</min><max>60</max><changeable_in_readonly>1</changeable_in_readonly></max_execution_time>
+        <max_threads><max>2</max></max_threads>
+        <max_memory_usage><max>268435456</max></max_memory_usage>
+      </constraints>
+    </grafana_readonly>
+  </profiles>
+  <users>
+    <grafana_reader>
+      <password>app</password>
+      <networks><ip>::/0</ip></networks>
+      <profile>grafana_readonly</profile>
+      <quota>default</quota>
+      <grants><query>GRANT SELECT ON app.events</query></grants>
+      <databases><app><events><filter>project_id = 'lab3-demo'</filter></events></app></databases>
+    </grafana_reader>
+  </users>
+</clickhouse>

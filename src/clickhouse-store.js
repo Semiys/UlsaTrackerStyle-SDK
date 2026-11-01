@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createClient } from '@clickhouse/client';
 import { ApiError } from './errors.js';
-import { CSV_ROW_LIMIT, CSV_BYTE_LIMIT } from './csv-export.js';
+import { CSV_ROW_LIMIT, CSV_BYTE_LIMIT } from './analytics-export.js';
 
 const integer = value => {
   const result = Number(value);
@@ -88,7 +88,7 @@ export class ClickHouseAnalyticsStore {
         clickhouse_settings: { max_threads: 2, max_execution_time: 8, max_memory_usage: 134217728,
           max_result_bytes: CSV_BYTE_LIMIT, result_overflow_mode: 'throw' } });
       const rows = await result.json();
-      if (rows.length > CSV_ROW_LIMIT) throw new ApiError(413, 'export_too_many_rows', 'В CSV больше 10 000 строк. Выберите более короткий период. Файл не обрезан.');
+      if (rows.length > CSV_ROW_LIMIT) throw new ApiError(413, 'export_too_many_rows', 'В выгрузке больше 10 000 записей. Выберите более короткий период. Файл не обрезан.');
       return kind === 'summary' ? rows.map(row => ({ ...row, eventCount: integer(row.eventCount), sessionCount: integer(row.sessionCount) })) : rows;
     });
   }

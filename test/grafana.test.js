@@ -66,7 +66,8 @@ test('Grafana opens a provisioned dashboard anonymously, with the fixed ClickHou
   assert.match(response.headers.get('content-security-policy'), /frame-src http:\/\/localhost:13000/);
   const embedded = await fetch(grafanaUrl + '/d/ulsatracker/events');
   assert.equal(embedded.status, 200);
-  assert.equal(embedded.headers.get('content-security-policy'), "frame-ancestors 'self' http://localhost:18085");
+  assert.ok(embedded.headers.get('content-security-policy').split(';').map(x => x.trim()).includes("frame-ancestors 'self' http://localhost:18085"));
+  if (process.env.REQUIRE_GRAFANA_CSP === '1') assert.match(embedded.headers.get('content-security-policy'), /script-src[^;]+nonce-/);
 });
 
 test('every provisioned panel executes against ClickHouse; counters agree with the API', integration, async () => {

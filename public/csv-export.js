@@ -9,13 +9,19 @@ export function csvExportQuery(selection, now = Date.now(), timezone = browserTi
 }
 
 export function mountCsvExport({ getSelection }) {
-  const trigger = document.getElementById('export-csv'), dialog = document.getElementById('csv-dialog');
-  if (!trigger || !dialog) return;
+  const triggers = ['export-csv', 'export-json'].map(id => document.getElementById(id)).filter(Boolean);
+  const dialog = document.getElementById('csv-dialog');
+  if (!triggers.length || !dialog) return;
+  let trigger = triggers[0], format = 'csv';
   const status = document.getElementById('csv-status');
   const buttons = [...dialog.querySelectorAll('[data-export-kind]')];
   let request;
   const close = () => { request?.abort(); dialog.close(); trigger.focus(); };
-  trigger.addEventListener('click', () => {
+  for (const item of triggers) item.addEventListener('click', () => {
+    trigger = item; format = item.dataset.exportFormat === 'json' ? 'json' : 'csv';
+    document.getElementById('csv-title').textContent = `Скачать ${format.toUpperCase()}`;
+    document.getElementById('csv-format-note').textContent = format === 'json'
+      ? 'JSON сохраняет структуру данных и подходит для программ и нейросетей.' : 'CSV открывается в Excel.';
     status.textContent = '';
     document.getElementById('csv-period').textContent = `${rangeLabel(getSelection())} · ${timeZoneLabel()}`;
     dialog.showModal();
@@ -31,7 +37,7 @@ export function mountCsvExport({ getSelection }) {
     request = new AbortController();
     const current = request;
     for (const item of buttons) item.disabled = true;
-    status.textContent = 'Готовим CSV…';
+    status.textContent = `Готовим ${format.toUpperCase()}…`;
     try {
       const url = new URL(trigger.dataset.exportUrl, window.location.origin);
       url.search = csvExportQuery(getSelection()).toString(); url.searchParams.set('kind', button.dataset.exportKind);
@@ -39,17 +45,18 @@ export function mountCsvExport({ getSelection }) {
       if (response.redirected) throw new Error('Сеанс завершён. Войдите в кабинет и повторите скачивание.');
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        throw new Error(body?.error?.message ?? 'Не удалось скачать CSV. Повторите позже.');
+        throw new Error(body?.error?.message ?? 'Не удалось скачать файл. Повторите позже.');
       }
-      if (!response.headers.get('content-type')?.startsWith('text/csv')) throw new Error('Не удалось скачать CSV. Обновите страницу и повторите.');
+      const contentType = format === 'json' ? 'application/json' : 'text/csv';
+      if (!response.headers.get('content-type')?.startsWith(contentType)) throw new Error('Не удалось скачать файл. Обновите страницу и повторите.');
       const blob = await response.blob();
       if (current.signal.aborted) return;
       const download = document.createElement('a'), objectUrl = URL.createObjectURL(blob);
       download.href = objectUrl;
-      download.download = response.headers.get('content-disposition')?.match(/filename="([a-z0-9.-]+)"/i)?.[1] ?? 'ulsa-export.csv';
+      download.download = response.headers.get('content-disposition')?.match(/filename="([a-z0-9.-]+)"/i)?.[1] ?? `ulsa-export.${format}`;
       document.body.append(download); download.click(); download.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      status.textContent = `CSV подготовлен. Строк данных: ${response.headers.get('x-export-rows') ?? '—'}. Файл сохранится в загрузках браузера.`;
+      status.textContent = `${format.toUpperCase()} подготовлен. Записей данных: ${response.headers.get('x-export-rows') ?? '—'}. Файл сохранится в загрузках браузера.`;
     } catch (error) {
       if (error.name !== 'AbortError') status.textContent = error.message;
     } finally {

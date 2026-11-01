@@ -1,7 +1,7 @@
 import { Router, urlencoded } from 'express';
 import { randomUUID } from 'node:crypto';
 import { ApiError } from './errors.js';
-import { createCsvExporter } from './csv-export.js';
+import { createDataExporter } from './analytics-export.js';
 import { requireOwner, requireCsrf, authLimiter } from './console-security.js';
 import { validateBatch } from './events.js';
 import { SERVER_VERSION } from './version.js';
@@ -11,7 +11,7 @@ const field = (req, name) => typeof req.body?.[name] === 'string' ? req.body[nam
 
 export function consoleRouter({ config, accounts, store, grafana }) {
   const router = Router();
-  const sendCsv = createCsvExporter(store);
+  const sendExport = createDataExporter(store);
   const parse = urlencoded({ extended: false, limit: '12kb', parameterLimit: 20 });
   const limit = authLimiter();
   const mutations = new WindowLimiter(60, 60_000);
@@ -98,9 +98,9 @@ export function consoleRouter({ config, accounts, store, grafana }) {
       privateDashboardUrl: `/grafana/d/${application.id}/events`,
     });
   });
-  router.get('/console/apps/:appId/export.csv', (req, res) => {
+  for (const format of ['csv', 'json']) router.get('/console/apps/:appId/export.' + format, (req, res) => {
     const application = accounts.application(req.accountSession.user.id, req.params.appId);
-    return sendCsv(req, res, application.id);
+    return sendExport(req, res, application.id, format);
   });
   router.get('/console/apps/:appId/range', async (req, res) => {
     const application = accounts.application(req.accountSession.user.id, req.params.appId);

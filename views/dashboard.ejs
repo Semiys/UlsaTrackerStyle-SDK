@@ -6,7 +6,7 @@
   <% if (saved) { %><p class="success-message" role="status">Событие сохранено. Панель обновится автоматически в течение 30 секунд.</p><% } %>
   <section class="stats-header">
     <div><p class="eyebrow">Ваш проект</p><h1>Статистика приложения</h1><p class="muted"><%= projectName %> · местное время</p></div>
-    <div class="controls"><button class="button secondary" id="export-csv" type="button" data-export-url="/dashboard/export.csv">Скачать CSV</button><button class="button secondary" id="refresh-grafana" type="button">Обновить панель</button><a class="button secondary" id="open-grafana" href="<%= dashboardUrl %>?theme=light" target="_blank" rel="noopener noreferrer">На весь экран</a></div>
+    <div class="controls"><button class="button secondary" id="export-csv" type="button" data-export-url="/dashboard/export.csv">Скачать CSV</button><button class="button secondary" id="export-json" type="button" data-export-format="json" data-export-url="/dashboard/export.json">Скачать JSON</button><button class="button secondary" id="refresh-grafana" type="button">Обновить панель</button><a class="button secondary" id="open-grafana" href="<%= dashboardUrl %>?theme=light" target="_blank" rel="noopener noreferrer">На весь экран</a></div>
   </section>
   <%- include('partials/date-range') %>
   <%- include('partials/csv-export') %>

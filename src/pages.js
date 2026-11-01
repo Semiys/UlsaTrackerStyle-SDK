@@ -3,7 +3,7 @@ import { Router, urlencoded } from 'express';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { validateBatch } from './events.js';
 import { ApiError } from './errors.js';
-import { createCsvExporter } from './csv-export.js';
+import { createDataExporter } from './analytics-export.js';
 import { guideExamples } from './guide-examples.js';
 import { SERVER_VERSION, LAB_IMAGE_VERSION } from './version.js';
 
@@ -11,7 +11,7 @@ const knownNames = new Map([['screen_view', 'Открытие экрана'], ['
 
 export function pageRouter({ config, store }) {
   const router = Router();
-  const sendCsv = createCsvExporter(store);
+  const sendExport = createDataExporter(store);
   const formSecret = randomBytes(32);
   const signForm = ({ eventId, sessionId, occurredAt }) => createHmac('sha256', formSecret)
     .update(JSON.stringify([eventId, sessionId, occurredAt])).digest('hex');
@@ -67,9 +67,9 @@ export function pageRouter({ config, store }) {
         reason: error.message, field: error.field ?? null, example: false });
     }
   });
-  router.get('/dashboard/export.csv', (req, res) => {
+  for (const format of ['csv', 'json']) router.get('/dashboard/export.' + format, (req, res) => {
     if (!config.demoMode) throw new ApiError(404, 'not_found', 'Демонстрационная статистика недоступна.');
-    return sendCsv(req, res, config.projectId);
+    return sendExport(req, res, config.projectId, format);
   });
   router.get('/dashboard/range', async (req, res) => {
     if (!config.demoMode) throw new ApiError(404, 'not_found', 'Демонстрационная статистика недоступна.');

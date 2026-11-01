@@ -5,6 +5,7 @@ import { SERVER_VERSION } from './version.js';
 import { AccountStore } from './accounts.js';
 import { GrafanaCabinet } from './grafana-cabinet.js';
 import { createServer } from 'node:http';
+import { ServiceMetrics } from './metrics.js';
 
 const port = Number(process.env.PORT ?? 8080);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -15,7 +16,11 @@ const config = await loadConfig();
 const store = await openStoreAtStartup(config);
 const accounts = config.consoleEnabled ? new AccountStore(config.accountsPath) : null;
 const grafana = accounts && config.dashboardProvider === 'grafana' ? new GrafanaCabinet({ config, accounts, store }) : null;
-const app = createApp({ config, store, accounts, grafana });
+const metrics = config.metricsEnabled ? new ServiceMetrics(store, { grafanaUrl: grafana ? config.grafanaInternalUrl : null }) : null;
+const app = createApp({ config, store, accounts, grafana, metrics });
+// This listener is only exposed on the internal monitoring network by Compose.
+const metricsServer = metrics ? createServer(metrics.handler).listen(config.metricsPort, '0.0.0.0') : null;
+metricsServer?.on('error', error => { console.error('Metrics listener could not start:', error.code); shutdown(); });
 
 const server = app.listen(port, '0.0.0.0', () => {
   console.log(`UlsaTrackerStyle SDK ${SERVER_VERSION}: ${config.storageBackend}; container port ${port}; dashboard /dashboard`);
@@ -39,8 +44,8 @@ function shutdown() {
   stopping = true;
   const deadline = setTimeout(() => process.exit(1), 15_000).unref();
   const close = listener => new Promise(resolve => listener ? listener.close(resolve) : resolve());
-  Promise.all([close(server), close(panelServer)]).then(async () => {
-    try { await store.close(); accounts?.close(); clearTimeout(deadline); process.exit(0); }
+  Promise.all([close(server), close(panelServer), close(metricsServer)]).then(async () => {
+    try { await store.close(); accounts?.close(); metrics?.close(); clearTimeout(deadline); process.exit(0); }
     catch { process.exit(1); }
   });
 }

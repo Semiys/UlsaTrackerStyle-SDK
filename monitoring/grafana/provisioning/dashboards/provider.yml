@@ -1,0 +1,6 @@
+apiVersion: 1
+providers:
+  - name: Service monitoring
+    type: file
+    editable: false
+    options: {path: /etc/grafana/monitoring-dashboards}

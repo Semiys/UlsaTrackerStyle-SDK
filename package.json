@@ -1,6 +1,6 @@
 {
   "name": "ulsa-tracker-style-sdk",
-  "version": "0.9.0",
+  "version": "0.10.1",
   "private": true,
   "type": "module",
   "description": "UlsaTrackerStyle SDK — сервис продуктовой аналитики для мобильных приложений",
@@ -10,15 +10,16 @@
     "test:lab2": "node --test test/json-store.test.js test/pages.test.js",
     "test:lab4": "node --test test/json-store.test.js test/pages.test.js test/guide.test.js test/clickhouse-store.test.js test/grafana.test.js test/grafana-periods.test.js test/grafana-short-period.test.js test/dashboard-controls.test.js test/date-range.test.js test/timezone.test.js test/grafana-timezone.test.js test/grafana-flow.test.js test/accounts.test.js test/js-sdk.test.js test/console-integration.test.js test/startup.test.js",
     "test:lab3": "node --test test/json-store.test.js test/pages.test.js test/clickhouse-store.test.js",
-    "test:release": "node --test --test-concurrency=1 test/json-store.test.js test/pages.test.js test/guide.test.js test/clickhouse-store.test.js test/grafana.test.js test/grafana-periods.test.js test/grafana-short-period.test.js test/dashboard-controls.test.js test/date-range.test.js test/timezone.test.js test/grafana-timezone.test.js test/grafana-flow.test.js test/accounts.test.js test/js-sdk.test.js test/console-integration.test.js test/startup.test.js test/csv-export.test.js test/csv-integration.test.js"
+    "test:release": "node --test --test-concurrency=1 test/json-store.test.js test/pages.test.js test/guide.test.js test/clickhouse-store.test.js test/grafana.test.js test/grafana-periods.test.js test/grafana-short-period.test.js test/dashboard-controls.test.js test/date-range.test.js test/timezone.test.js test/grafana-timezone.test.js test/grafana-flow.test.js test/accounts.test.js test/js-sdk.test.js test/console-integration.test.js test/startup.test.js test/csv-export.test.js test/csv-integration.test.js test/security.test.js test/security-integration.test.js test/metrics.test.js test/monitoring-integration.test.js test/json-export.test.js"
   },
   "engines": {
-    "node": "24.21.0"
+    "node": ">=24.21.0 <25"
   },
   "dependencies": {
     "express": "5.2.1",
     "ejs": "7.0.1",
-    "@clickhouse/client": "1.12.0"
+    "@clickhouse/client": "1.12.0",
+    "@prometheus-io/client": "0.16.1"
   },
   "optionalDependencies": {
     "@duckdb/node-api": "1.5.6-r.1"

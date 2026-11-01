@@ -16,3 +16,5 @@
 !sdk/
 !sdk/js/
 !sdk/js/**
+
+!scripts/download-monitoring-plugin.mjs

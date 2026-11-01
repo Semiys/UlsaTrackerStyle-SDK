@@ -1,0 +1,114 @@
+# Local operator monitoring. Combine with docker-compose.yml.
+services:
+  app:
+    image: ulsatrackerstyle-sdk:0.10.1
+    build: {context: ., target: monitoring-runtime}
+    pull_policy: never
+    environment:
+      METRICS_ENABLED: "1"
+      METRICS_PORT: "9100"
+      LAB_IMAGE_VERSION: 0.10.1
+      GRAFANA_ADMIN_PASSWORD_FILE: /run/secrets/product_dashboard_password
+    volumes:
+      - grafanaplugins4234:/opt/ulsatracker/grafana-plugins:ro
+    secrets: [product_dashboard_password]
+    group_add: ["65530"]
+    networks: [default, monitoring]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+  dashboard:
+    image: ulsa-monitoring-grafana:13.3.0
+    build: {context: ./monitoring, dockerfile: Grafana.Dockerfile}
+    pull_policy: never
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ""
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/product_dashboard_password
+      GF_SECURITY_CONTENT_SECURITY_POLICY: "true"
+    secrets: [product_dashboard_password]
+    group_add: ["65530"]
+    volumes:
+      - product_grafana_13:/var/lib/grafana
+      - grafanaplugins4234:/var/lib/grafana/plugins:ro
+      - ./monitoring/product-dashboard.json:/etc/grafana/provisioning/dashboards/ulsatracker.json:ro
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+  db:
+    image: clickhouse/clickhouse-server:26.8.34.13
+    networks: [default, monitoring]
+    volumes:
+      - ./monitoring/clickhouse-server.xml:/etc/clickhouse-server/config.d/local-resources.xml:ro
+      - ./monitoring/clickhouse-users.xml:/etc/clickhouse-server/users.d/dashboard.xml:ro
+  prometheus:
+    image: prom/prometheus:v3.13.5
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.size=512MB
+      - --query.max-concurrency=4
+      - --query.timeout=10s
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-9091}:9090"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheusdata:/prometheus
+    networks: [monitoring, monitoring-ui]
+    mem_limit: 256m
+    cpus: 0.5
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9090/-/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  monitoring-dashboard:
+    image: ulsa-monitoring-grafana:13.3.0
+    build: {context: ./monitoring, dockerfile: Grafana.Dockerfile}
+    pull_policy: never
+    ports: ["127.0.0.1:${MONITORING_PORT:-3100}:3000"]
+    environment:
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/monitoring-dashboards/service.json
+      GF_LOG_LEVEL: warn
+      GF_SECURITY_ADMIN_USER: operator
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/monitoring_operator_password
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_CONTENT_SECURITY_POLICY: "true"
+      GF_USERS_DEFAULT_THEME: light
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_LIVE_MAX_CONNECTIONS: "0"
+    secrets: [monitoring_operator_password]
+    group_add: ["65530"]
+    volumes:
+      - operatordata:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/monitoring-dashboards:ro
+    networks: [monitoring, monitoring-ui]
+    mem_limit: 256m
+    cpus: 0.5
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+networks:
+  monitoring:
+    internal: true
+  monitoring-ui:
+    driver: bridge
+volumes:
+  grafanaplugins4234:
+  product_grafana_13:
+  prometheusdata:
+  operatordata:
+secrets:
+  product_dashboard_password:
+    file: ./.monitoring-secrets/dashboard-password
+  monitoring_operator_password:
+    file: ./.monitoring-secrets/operator-password

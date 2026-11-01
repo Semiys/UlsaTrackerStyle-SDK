@@ -5,6 +5,7 @@ coverage/
 dist/
 
 # Local configuration and secrets
+.monitoring-secrets/
 .env
 .env.*
 !.env.example

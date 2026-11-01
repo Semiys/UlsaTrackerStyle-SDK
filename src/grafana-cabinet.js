@@ -96,8 +96,13 @@ export class GrafanaCabinet {
         if (!incoming.pathname.startsWith('/grafana/')) return res.redirect(302, '/grafana/');
         const path = incoming.pathname.slice('/grafana'.length);
         const allowedGet = /^\/(?:$|public\/|d\/|dashboards(?:\/|$)|api\/(?:frontend\/settings|health|search|dashboards\/uid\/|datasources(?:\/|$)|plugins\/|user(?:\/preferences)?$|org$|folders(?:\/|$)|annotations$|prometheus\/grafana\/api\/v1\/rules$|ruler\/grafana\/api\/v1\/rules$|access-control\/user\/permissions$))/.test(path);
-        const allowedPost = path === '/api/ds/query';
-        if (!(req.method === 'GET' && allowedGet) && !(req.method === 'POST' && allowedPost)) {
+        // Grafana 13 reads dashboards through its namespaced API. Never allow
+        // arbitrary /apis routes or writes through the customer gateway.
+        const allowedReadApi = path === '/apis/dashboard.grafana.app/'
+          || /^\/apis\/dashboard\.grafana\.app\/(?:v1|v2|v1beta1|v2beta1)\/namespaces\/(?:default|org-[1-9]\d*)\/dashboards\/[A-Za-z0-9_-]+(?:\/dto)?$/.test(path)
+          || /^\/apis\/preferences\.grafana\.app\/v1\/namespaces\/(?:default|org-[1-9]\d*)\/preferences\/merged$/.test(path);
+        const allowedPost = path === '/api/ds/query' || path === '/ofrep/v1/evaluate/flags';
+        if (!(req.method === 'GET' && (allowedGet || allowedReadApi)) && !(req.method === 'POST' && allowedPost)) {
           if (req.method === 'POST' && path === '/api/frontend-metrics') return res.sendStatus(204);
           return res.status(403).json({ message: 'Доступен только просмотр аналитики.' });
         }
@@ -111,14 +116,20 @@ export class GrafanaCabinet {
         }
         const selectedDemo = this.config.demoMode && (incoming.searchParams.get('orgId') === '1'
           || req.get('X-Grafana-Org-Id') === '1' || path.startsWith('/d/ulsatracker/'));
+        let selectedOrg = 1;
         if (req.accountSession && !selectedDemo) {
           const identity = await this.prepare(req.accountSession.user);
           headers.Authorization = 'Basic ' + Buffer.from(`${identity.login}:${identity.password}`).toString('base64');
+          selectedOrg = identity.orgId;
           headers['X-Grafana-Org-Id'] = String(identity.orgId);
           incoming.searchParams.set('orgId', String(identity.orgId));
         } else {
           if (!this.config.demoMode) return res.sendStatus(401);
           incoming.searchParams.set('orgId', '1');
+        }
+        const namespace = /^\/apis\/[^/]+\/[^/]+\/namespaces\/([^/]+)(?:\/|$)/.exec(path)?.[1];
+        if (namespace && namespace !== `org-${selectedOrg}` && !(selectedOrg === 1 && namespace === 'default')) {
+          return res.status(404).json({ message: 'Панель не найдена.' });
         }
         const target = new URL(incoming.pathname + incoming.search, this.config.grafanaInternalUrl);
         const agent = req.method === 'POST' ? this.queryAgents[target.protocol] : undefined;
@@ -138,8 +149,12 @@ export class GrafanaCabinet {
           }
           // Grafana cookies/credentials are never exposed through the gateway.
           res.set('Cache-Control', 'private, no-store');
-          res.removeHeader('Content-Security-Policy');
-          res.set('Content-Security-Policy', `frame-ancestors 'self' ${new URL(this.config.publicUrl).origin}`);
+          // Keep Grafana's script/connection restrictions, including its nonces.
+          // Only replace frame-ancestors to permit the same-origin cabinet.
+          const csp = typeof upstream.headers['content-security-policy'] === 'string'
+            ? upstream.headers['content-security-policy'].split(';').map(x => x.trim()).filter(x => x && !/^frame-ancestors(?:\s|$)/i.test(x)) : [];
+          csp.push(`frame-ancestors 'self' ${new URL(this.config.publicUrl).origin}`);
+          res.set('Content-Security-Policy', csp.join('; '));
           upstream.on('error', () => res.destroy());
           upstream.pipe(res);
         });

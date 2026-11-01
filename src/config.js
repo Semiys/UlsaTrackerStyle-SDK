@@ -65,12 +65,21 @@ export async function loadConfig(env = process.env) {
   if (demoMode && (access.ingestKey !== DEMO_INGEST_KEY || access.readKey !== DEMO_READ_KEY || access.projectId !== demoProject)) {
     throw new Error('Use a separate empty volume for the teaching demo');
   }
+  if (!demoMode && (access.ingestKey === DEMO_INGEST_KEY || access.readKey === DEMO_READ_KEY)) {
+    throw new Error('Public demo keys cannot be used with DEMO_MODE=0; migrate access.json or use a separate private volume');
+  }
+  const secret = async name => env[name + '_FILE'] ? (await readFile(env[name + '_FILE'], 'utf8')).trim() : env[name];
+  const grafanaPassword = await secret('GRAFANA_ADMIN_PASSWORD');
+  if (env.METRICS_ENABLED !== undefined && !['0', '1'].includes(env.METRICS_ENABLED)) throw new Error('Invalid METRICS_ENABLED');
+  const metricsPort = Number(env.METRICS_PORT ?? 9100);
+  if (!Number.isInteger(metricsPort) || metricsPort < 1 || metricsPort > 65535 || [Number(env.PORT ?? 8080), 3000].includes(metricsPort)) throw new Error('Invalid METRICS_PORT');
   const grafanaInternal = new URL(env.GRAFANA_INTERNAL_URL ?? 'http://dashboard:3000');
   if (!['http:', 'https:'].includes(grafanaInternal.protocol) || grafanaInternal.username || grafanaInternal.password
       || grafanaInternal.pathname !== '/' || grafanaInternal.search || grafanaInternal.hash) throw new Error('Invalid GRAFANA_INTERNAL_URL');
   return { ...access, demoMode, storageBackend, dataDir, clickhouse, dashboardProvider, dashboardUrl,
     consoleEnabled, publicUrl: publicUrl.origin, secureCookies: publicUrl.protocol === 'https:',
     accountsPath: join(dataDir, 'accounts.sqlite'), grafanaInternalUrl: grafanaInternal.origin,
-    grafanaAdminUser: env.GRAFANA_ADMIN_USER ?? 'app', grafanaAdminPassword: env.GRAFANA_ADMIN_PASSWORD ?? 'app',
+    grafanaAdminUser: env.GRAFANA_ADMIN_USER ?? 'app', grafanaAdminPassword: grafanaPassword ?? 'app',
+    metricsEnabled: env.METRICS_ENABLED === '1', metricsPort,
     jsonPath: join(dataDir, 'events.json'), databasePath: join(dataDir, 'analytics.duckdb') };
 }

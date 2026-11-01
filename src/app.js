@@ -21,9 +21,10 @@ function authorize(key) {
   };
 }
 
-export function createApp({ config, store, accounts = null, grafana = null }) {
+export function createApp({ config, store, accounts = null, grafana = null, metrics = null }) {
   const app = express();
   app.disable('x-powered-by');
+  if (metrics) app.use(metrics.observeHttp);
   app.set('view engine', 'ejs');
   app.set('views', fileURLToPath(new URL('../views/', import.meta.url)));
   app.use((req, res, next) => {
@@ -52,6 +53,7 @@ export function createApp({ config, store, accounts = null, grafana = null }) {
     const events = validateBatch(req.body);
     if (req.analyticsApplication && events.some(event => event.platform !== req.analyticsApplication.platform)) throw new ApiError(400, 'platform_mismatch', 'Платформа событий не совпадает с настройкой приложения.');
     const result = await store.ingest(req.analyticsApplication?.id ?? config.projectId, events);
+    metrics?.ingested(result);
     res.status(200).json({ schemaVersion: 1, ...result });
   });
   app.get('/api/v1/stats', authorize(config.readKey), async (req, res) => {
