@@ -99,7 +99,7 @@ export function createDataExporter(store) {
       if (!['csv', 'json'].includes(format)) throw new ApiError(400, 'invalid_export_format', 'Выберите CSV или JSON.');
       const options = exportOptions(req.query);
       if (!store.exportRows) throw new ApiError(503, 'export_unavailable', 'Экспорт доступен на стенде с ClickHouse.');
-      const wait = requests.take(req.accountSession?.user.id ?? req.socket.remoteAddress ?? 'guest');
+      const wait = requests.take(req.accountSession?.user.id ?? req.ip ?? req.socket.remoteAddress ?? 'guest');
       if (wait) { res.set('Retry-After', String(wait)); throw new ApiError(429, 'export_rate_limit', 'Слишком много выгрузок. Повторите через минуту.'); }
       const rows = await store.exportRows(projectId, options);
       const body = Buffer.from(format === 'json' ? exportJson(rows, options) : exportCsv(rows, options), 'utf8');

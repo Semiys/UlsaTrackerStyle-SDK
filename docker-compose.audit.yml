@@ -13,7 +13,7 @@ services:
   monitoring-dashboard:
     ports: !override ["127.0.0.1:13100:3000"]
   checks:
-    image: ulsatrackerstyle-sdk:audit-test-0.10.1
+    image: ulsatrackerstyle-sdk:audit-test-0.11.1
     build: {context: ., target: monitoring-test}
     environment:
       STORAGE_BACKEND: clickhouse
@@ -23,7 +23,7 @@ services:
       DATABASE_NAME: app
       APP_TEST_URL: http://app:8080
       GRAFANA_TEST_URL: http://app:3000/grafana
-      EXPECTED_DASHBOARD_TITLE: UlsaTrackerStyle SDK 0.10.1
+      EXPECTED_DASHBOARD_TITLE: UlsaTrackerStyle SDK 0.11.1
       REQUIRE_GRAFANA_CSP: "1"
       PROMETHEUS_TEST_URL: http://prometheus:9090
     command: ["npm", "run", "test:release"]

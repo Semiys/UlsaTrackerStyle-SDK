@@ -2,7 +2,7 @@
   "uid": "ulsa-service",
   "title": "UlsaTrackerStyle · состояние сервиса",
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "timezone": "browser",
   "refresh": "15s",
   "time": {
@@ -18,7 +18,7 @@
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 6,
+        "w": 5,
         "h": 4
       },
       "datasource": {
@@ -71,9 +71,9 @@
       "type": "stat",
       "title": "База доступна",
       "gridPos": {
-        "x": 6,
+        "x": 5,
         "y": 0,
-        "w": 6,
+        "w": 5,
         "h": 4
       },
       "datasource": {
@@ -126,9 +126,9 @@
       "type": "stat",
       "title": "Grafana доступна",
       "gridPos": {
-        "x": 12,
+        "x": 10,
         "y": 0,
-        "w": 6,
+        "w": 5,
         "h": 4
       },
       "datasource": {
@@ -181,9 +181,9 @@
       "type": "stat",
       "title": "Операций в очереди",
       "gridPos": {
-        "x": 18,
+        "x": 15,
         "y": 0,
-        "w": 6,
+        "w": 5,
         "h": 4
       },
       "datasource": {
@@ -669,6 +669,62 @@
           "placement": "bottom"
         }
       }
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Интерфейс доступен",
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ulsa-monitoring"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "ulsa_frontend_available",
+          "legendFormat": "{{instance}}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bool",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Недоступен",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Доступен",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "Проверка отдельного React frontend. Включается в React-конфигурации; API и хранилище проверяются отдельно."
     }
   ],
   "timepicker": {

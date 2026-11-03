@@ -6,6 +6,9 @@ import { ApiError } from './errors.js';
 import { pageRouter } from './pages.js';
 import { SERVER_VERSION, LAB_IMAGE_VERSION } from './version.js';
 import { consoleRouter } from './console-pages.js';
+import { consoleApiRouter } from './console-api.js';
+import { WindowLimiter } from './accounts.js';
+import { authLimiter } from './console-security.js';
 import { sessionMiddleware } from './console-security.js';
 import { ingestAccess, ingestPreflight } from './ingest-access.js';
 
@@ -24,6 +27,8 @@ function authorize(key) {
 export function createApp({ config, store, accounts = null, grafana = null, metrics = null }) {
   const app = express();
   app.disable('x-powered-by');
+  if (config.reverseProxyHops === 1) app.set('trust proxy', 1);
+  const consoleLimits = accounts ? { auth: authLimiter(), mutations: new WindowLimiter(60, 60_000) } : null;
   if (metrics) app.use(metrics.observeHttp);
   app.set('view engine', 'ejs');
   app.set('views', fileURLToPath(new URL('../views/', import.meta.url)));
@@ -65,11 +70,20 @@ export function createApp({ config, store, accounts = null, grafana = null, metr
   app.get('/api/v1/events/recent', authorize(config.readKey), async (req, res) => {
     res.json({ events: await store.recent(config.projectId), limit: 50 });
   });
+  if (accounts) app.use('/api/console', sessionMiddleware(accounts, config), consoleApiRouter({ config, accounts, store, grafana, limits: consoleLimits, metrics }));
   app.use('/api', (req, res) => res.status(404).json({ error: { code: 'not_found', message: 'Маршрут не найден.' } }));
   if (accounts) {
     app.use(sessionMiddleware(accounts, config));
+    // Grafana resolves root-relative dashboard links under its configured /grafana subpath.
+    // Keep these two exits on the current host, with normal owner checks.
+    app.get(['/grafana/console', '/grafana/console/apps/:appId'], (req, res) => {
+      if (!req.accountSession) return res.redirect(303, '/login');
+      const appId = req.params.appId;
+      if (appId) accounts.application(req.accountSession.user.id, appId);
+      res.redirect(303, appId ? '/console/apps/' + appId : '/console');
+    });
     if (grafana) app.use('/grafana', express.raw({ type: () => true, limit: '64kb' }), grafana.proxy());
-    app.use(consoleRouter({ config, accounts, store, grafana }));
+    app.use(consoleRouter({ config, accounts, store, grafana, limits: consoleLimits }));
     app.use('/sdk', (req, res, next) => { res.set('Access-Control-Allow-Origin', '*'); next(); });
   }
   app.use(pageRouter({ config, store }));
@@ -77,7 +91,7 @@ export function createApp({ config, store, accounts = null, grafana = null, metr
   app.use((req, res, next) => next(new ApiError(404, 'not_found', 'Страница не найдена. Перейдите к доступным действиям через меню.')));
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
-    if (error.type === 'entity.too.large') error = new ApiError(413, 'payload_too_large', req.path === '/events' ? 'Форма превышает 8 КиБ.' : 'Пакет превышает 64 КиБ.');
+    if (error.type === 'entity.too.large') error = new ApiError(413, 'payload_too_large', req.path.startsWith('/api/console/') ? 'Форма превышает 12 КиБ.' : req.path === '/events' ? 'Форма превышает 8 КиБ.' : 'Пакет превышает 64 КиБ.');
     if (error.type === 'entity.parse.failed') error = new ApiError(400, 'invalid_json', 'Некорректный JSON.');
     if (error.code === 'server_busy') res.set('Retry-After', '1');
     if (!(error instanceof ApiError)) console.error('Analytics operation failed:', error.name);

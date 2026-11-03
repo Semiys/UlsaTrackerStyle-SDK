@@ -77,8 +77,8 @@ export class GrafanaCabinet {
       const dashboard = JSON.parse(JSON.stringify(template).replaceAll('ulsatracker-clickhouse', 'owner-events').replaceAll("'lab3-demo'", `'${application.id}'`));
       dashboard.id = null; dashboard.uid = application.id; dashboard.title = `${application.name} · ${LAB_IMAGE_VERSION}`;
       dashboard.tags = ['UlsaTrackerStyle', 'application']; dashboard.links = [
-        { title: 'Мой кабинет', type: 'link', url: `${this.config.publicUrl}/console`, targetBlank: true },
-        { title: 'Подключение приложения', type: 'link', url: `${this.config.publicUrl}/console/apps/${application.id}`, targetBlank: true },
+        { title: 'Мой кабинет', type: 'link', url: '/console', targetBlank: true },
+        { title: 'Подключение приложения', type: 'link', url: `/console/apps/${application.id}`, targetBlank: true },
       ];
       await this.api('/api/dashboards/db', { orgId: org.id, method: 'POST', body: { dashboard, overwrite: true } });
     }

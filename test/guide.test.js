@@ -107,3 +107,9 @@ test('HTTPS guide avoids local-only HTTP opt-ins and Android initialisation happ
   assert.match(examples.settings, /includeBuild/);
   assert.match(examples.dependency, /tracker:0\.2\.0/);
 });
+
+test('USB instructions use the public service port instead of a hardcoded 8080', () => {
+  assert.equal(guideExamples('http://localhost:18086').reverse, 'adb reverse tcp:18086 tcp:18086');
+  assert.equal(guideExamples('http://localhost:8080').reverse, 'adb reverse tcp:8080 tcp:8080');
+  assert.equal(guideExamples('https://analytics.example.test:8443').reverse, 'adb reverse tcp:8443 tcp:8443');
+});

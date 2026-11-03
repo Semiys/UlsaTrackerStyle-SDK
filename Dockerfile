@@ -8,6 +8,7 @@ FROM lab-dependencies AS dependencies
 RUN npm ci --omit=dev --no-audit --no-fund
 
 FROM dependencies AS test
+COPY frontend/server.mjs ./frontend/server.mjs
 COPY src ./src
 COPY test ./test
 COPY public ./public
@@ -100,6 +101,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --omit=optional --no-audit --no-fund
 
 FROM monitoring-dependencies AS monitoring-test
+COPY frontend/server.mjs ./frontend/server.mjs
 COPY src ./src
 COPY test ./test
 COPY public ./public
@@ -122,7 +124,7 @@ COPY grafana ./grafana
 COPY sdk/js ./sdk/js
 COPY --from=monitoring-plugin /bundle /opt/ulsatracker/grafana-plugins
 RUN mkdir -p /app/data && chown node:node /app/data && chmod -R a+rX /opt/ulsatracker/grafana-plugins
-ENV NODE_ENV=production PORT=8080 DATA_DIR=/app/data STORAGE_BACKEND=clickhouse LAB_IMAGE_VERSION=0.10.1
+ENV NODE_ENV=production PORT=8080 DATA_DIR=/app/data STORAGE_BACKEND=clickhouse LAB_IMAGE_VERSION=0.11.1
 EXPOSE 8080 3000 9100
 USER node
 CMD ["node", "src/server.js"]

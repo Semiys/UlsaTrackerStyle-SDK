@@ -16,7 +16,7 @@ const config = await loadConfig();
 const store = await openStoreAtStartup(config);
 const accounts = config.consoleEnabled ? new AccountStore(config.accountsPath) : null;
 const grafana = accounts && config.dashboardProvider === 'grafana' ? new GrafanaCabinet({ config, accounts, store }) : null;
-const metrics = config.metricsEnabled ? new ServiceMetrics(store, { grafanaUrl: grafana ? config.grafanaInternalUrl : null }) : null;
+const metrics = config.metricsEnabled ? new ServiceMetrics(store, { grafanaUrl: grafana ? config.grafanaInternalUrl : null, frontendUrl: config.frontendInternalUrl }) : null;
 const app = createApp({ config, store, accounts, grafana, metrics });
 // This listener is only exposed on the internal monitoring network by Compose.
 const metricsServer = metrics ? createServer(metrics.handler).listen(config.metricsPort, '0.0.0.0') : null;

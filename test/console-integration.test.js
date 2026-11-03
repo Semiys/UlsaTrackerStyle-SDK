@@ -29,6 +29,7 @@ test('two owners receive isolated Grafana organizations and database readers; sp
     const response = await client.request('/grafana/api/dashboards/uid/' + app.id);
     const body = await response.text(); assert.equal(response.status, 200, body);
     const data = JSON.parse(body); assert.equal(data.dashboard.uid, app.id); assert.equal(data.meta.canSave, false);
+    assert.deepEqual(data.dashboard.links.map(link => link.url), ['/console', '/console/apps/' + app.id]);
     assert.equal((await client.request(`/console/apps/${app.id}/data`)).status, 200);
     const boundary = await client.request(`/console/apps/${app.id}/range`);
     assert.equal(boundary.headers.get('cache-control'), 'private, no-store');

@@ -34,6 +34,7 @@ export function readSelection(params, now = Date.now()) {
   const id = params.get('period') ?? `${params.get('days')}d`;
   return { kind: 'relative', id: preset(id) ? id : DEFAULT_PERIOD };
 }
+/** @param {object} selection @param {number | null} [firstEventAt] */
 export function rangeQuery(selection, firstEventAt = null) {
   if (selection.kind === 'absolute') return { from: String(selection.from), to: String(selection.to) };
   if (selection.id === 'all') {

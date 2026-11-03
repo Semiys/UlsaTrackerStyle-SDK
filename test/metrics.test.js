@@ -44,3 +44,13 @@ test('dedicated metrics listener rejects other paths and methods and reports una
   assert.match(response.headers.get('content-type'), /text\/plain/);
   assert.match(await response.text(), /ulsa_storage_available 0/);
 });
+
+test('optional frontend probe distinguishes a running static server from failed or invalid health responses', async t => {
+  let healthy = true;
+  const server = createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ status: healthy ? 'ok' : 'failed' })); }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const metrics = new ServiceMetrics({}, { frontendUrl: 'http://127.0.0.1:' + server.address().port }); t.after(() => metrics.close());
+  assert.match(await metrics.registry.metrics(), /ulsa_frontend_available 1/);
+  healthy = false; assert.match(await metrics.registry.metrics(), /ulsa_frontend_available 0/);
+});

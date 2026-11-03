@@ -9,12 +9,12 @@ import { WindowLimiter } from './accounts.js';
 
 const field = (req, name) => typeof req.body?.[name] === 'string' ? req.body[name] : '';
 
-export function consoleRouter({ config, accounts, store, grafana }) {
+export function consoleRouter({ config, accounts, store, grafana, limits }) {
   const router = Router();
   const sendExport = createDataExporter(store);
   const parse = urlencoded({ extended: false, limit: '12kb', parameterLimit: 20 });
-  const limit = authLimiter();
-  const mutations = new WindowLimiter(60, 60_000);
+  const limit = limits?.auth ?? authLimiter();
+  const mutations = limits?.mutations ?? new WindowLimiter(60, 60_000);
   const sessionCookie = (res, raw) => res.cookie('ulsa_session', raw, {
     httpOnly: true, sameSite: 'lax', secure: config.secureCookies, path: '/', maxAge: 7 * 86400_000,
   });

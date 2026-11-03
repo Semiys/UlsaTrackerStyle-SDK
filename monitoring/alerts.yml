@@ -21,3 +21,8 @@ groups:
         for: 1m
         labels: {severity: warning}
         annotations: {summary: "Product dashboard health probe failed"}
+      - alert: UlsaFrontendUnavailable
+        expr: ulsa_frontend_available == 0
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: "React frontend health probe failed"}

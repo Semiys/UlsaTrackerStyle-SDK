@@ -2,6 +2,7 @@
 export function guideExamples(endpoint) {
   const origin = JSON.stringify(endpoint);
   const localHttp = endpoint.startsWith('http:');
+  const port = new URL(endpoint).port || (localHttp ? '80' : '443');
   return {
     clone: 'git clone https://github.com/Semiys/UlsaTrackerStyle-SDK.git',
     settings: `// settings.gradle.kts вашего Android-проекта
@@ -76,7 +77,7 @@ setContent {
         // Откройте форму добавления вашего приложения.
     })
 }`,
-    reverse: 'adb reverse tcp:8080 tcp:8080',
+    reverse: `adb reverse tcp:${port} tcp:${port}`,
     prepared: `# local.properties приложения с подготовленным адаптером
 ulsaTracker.sdkPath=/путь/к/UlsaTrackerStyle-SDK/sdk/kotlin
 ulsaTracker.endpoint=${endpoint}

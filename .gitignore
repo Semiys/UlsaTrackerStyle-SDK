@@ -36,3 +36,6 @@ Thumbs.db
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+frontend/node_modules/
+frontend/dist/

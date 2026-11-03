@@ -63,10 +63,10 @@ test('Grafana opens a provisioned dashboard anonymously, with the fixed ClickHou
   assert.match(html, /grafana-frame/);
   assert.ok(html.includes('Сборка ' + (process.env.EXPECTED_DASHBOARD_TITLE?.split(' ').at(-1) ?? '0.0.4')));
   assert.doesNotMatch(html, /daily-chart/);
-  assert.match(response.headers.get('content-security-policy'), /frame-src http:\/\/localhost:13000/);
+  assert.ok(response.headers.get('content-security-policy').includes('frame-src ' + (process.env.EXPECTED_FRAME_ORIGIN ?? 'http://localhost:13000')));
   const embedded = await fetch(grafanaUrl + '/d/ulsatracker/events');
   assert.equal(embedded.status, 200);
-  assert.ok(embedded.headers.get('content-security-policy').split(';').map(x => x.trim()).includes("frame-ancestors 'self' http://localhost:18085"));
+  assert.ok(embedded.headers.get('content-security-policy').split(';').map(x => x.trim()).includes("frame-ancestors 'self' " + (process.env.EXPECTED_APP_ORIGIN ?? 'http://localhost:18085')));
   if (process.env.REQUIRE_GRAFANA_CSP === '1') assert.match(embedded.headers.get('content-security-policy'), /script-src[^;]+nonce-/);
 });
 

@@ -1,0 +1,19 @@
+# Dedicated empty-volume QA only. Keep the main project and its data separate.
+services:
+  app:
+    environment:
+      PUBLIC_URL: http://localhost:18086
+      DASHBOARD_PUBLIC_URL: http://localhost:18086
+  frontend:
+    ports: !override ["127.0.0.1:18086:8080"]
+    environment:
+      PUBLIC_URL: http://localhost:18086
+  dashboard:
+    environment:
+      GF_SERVER_ROOT_URL: http://localhost:18086/grafana/
+  checks:
+    environment:
+      EXPECTED_DASHBOARD_TITLE: UlsaTrackerStyle SDK 0.11.1
+      EXPECTED_FRAME_ORIGIN: http://localhost:18086
+      EXPECTED_APP_ORIGIN: http://localhost:18086
+      FRONTEND_TEST_URL: http://frontend:8080

@@ -8,6 +8,13 @@ const routes = [
 ];
 export function metricRoute(req) {
   const path = (req.originalUrl ?? req.path ?? req.url ?? '').split('?')[0].toLowerCase();
+  if (/^\/api\/console(?:\/|$)/.test(path)) {
+    if (/^\/api\/console\/(?:session|guide|register|login|logout|projects)$/.test(path)) return path;
+    if (/^\/api\/console\/projects\/[^/]+(?:\/(?:apps|settings))?$/.test(path)) return path.replace(/^\/api\/console\/projects\/[^/]+/, '/api/console/projects/:projectId');
+    if (/^\/api\/console\/apps\/[^/]+(?:\/(?:statistics|test|keys\/rotate))?$/.test(path)) return path.replace(/^\/api\/console\/apps\/[^/]+/, '/api/console/apps/:appId');
+    if (/^\/api\/console\/apps\/[^/]+\/keys\/[^/]+\/revoke$/.test(path)) return '/api/console/apps/:appId/keys/:keyId/revoke';
+    return 'other';
+  }
   if (path.startsWith('/grafana/')) return '/grafana/*';
   if (/^\/console\/apps\/[^/]+(?:\/(?:stats|data|range|test|export\.(?:csv|json)|keys\/rotate))?$/.test(path))
     return path.replace(/^\/console\/apps\/[^/]+/, '/console/apps/:appId');
@@ -18,7 +25,7 @@ export function metricRoute(req) {
 }
 
 export class ServiceMetrics {
-  constructor(store, { grafanaUrl } = {}) {
+  constructor(store, { grafanaUrl, frontendUrl } = {}) {
     this.store = store;
     this.registry = new client.Registry();
     client.collectDefaultMetrics({ register: this.registry, prefix: 'ulsa_' });
@@ -48,6 +55,13 @@ export class ServiceMetrics {
         try {
           const response = await fetch(new URL('/grafana/api/health', grafanaUrl), { signal: AbortSignal.timeout(2000), redirect: 'error' });
           this.set(response.ok && (await response.json()).database === 'ok' ? 1 : 0);
+        } catch { this.set(0); }
+      } });
+    if (frontendUrl) new client.Gauge({ name: 'ulsa_frontend_available', help: 'Static frontend health probe; does not replace API/storage probes.', registers,
+      async collect() {
+        try {
+          const response = await fetch(new URL('/frontend-health', frontendUrl), { signal: AbortSignal.timeout(2000), redirect: 'error' });
+          this.set(response.ok && (await response.json()).status === 'ok' ? 1 : 0);
         } catch { this.set(0); }
       } });
     this.observeHttp = (req, res, next) => {
