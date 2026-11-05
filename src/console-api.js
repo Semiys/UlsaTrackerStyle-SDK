@@ -8,10 +8,11 @@ import { guideExamples } from './guide-examples.js';
 
 const field = (req, name) => typeof req.body?.[name] === 'string' ? req.body[name] : '';
 const projectView = ({ id, name, archived, created_at, applications }) => ({ id, name, archived: !!archived, created_at, ...(applications !== undefined ? { applications } : {}) });
-const applicationView = ({ id, project_id, project_name, name, platform, identifier, archived, created_at }) => ({ id, project_id, project_name, name, platform, identifier, archived: !!archived, created_at });
+const applicationView = ({ id, project_id, project_name, name, platform, identifier, archived, created_at, deleting_at }) => ({ id, project_id, project_name, name, platform, identifier, archived: !!archived, deleting: !!deleting_at, created_at });
 
 export function consoleApiRouter({ config, accounts, store, grafana, limits, metrics }) {
   const router = Router();
+  const deletions = new Map();
   router.use((req, res, next) => {
     res.set('Cache-Control', 'private, no-store');
     if (req.method === 'GET') return next();
@@ -71,7 +72,25 @@ export function consoleApiRouter({ config, accounts, store, grafana, limits, met
     grafana?.invalidate(owner);
     sendApplication(req, res, result.application, result.key, 201);
   });
-  router.get('/apps/:appId', (req, res) => sendApplication(req, res, accounts.application(req.accountSession.user.id, req.params.appId)));
+  router.get('/apps/:appId', (req, res) => sendApplication(req, res, accounts.application(req.accountSession.user.id, req.params.appId, { allowDeleting: true })));
+  router.post('/apps/:appId/delete', async (req, res) => {
+    const owner = req.accountSession.user;
+    // Check ownership and confirmation before changing any state.
+    const app = accounts.application(owner.id, req.params.appId, { allowDeleting: true });
+    if (!store.deleteProjectEvents) throw new ApiError(503, 'deletion_unavailable', 'Удаление пока недоступно для этого хранилища.');
+    accounts.beginApplicationDeletion(owner.id, app.id, field(req, 'confirmation'));
+    let operation = deletions.get(app.id);
+    if (!operation) {
+      operation = (async () => {
+        if (grafana) await grafana.removeApplication(owner, app.id);
+        await store.deleteProjectEvents(app.id);
+        return accounts.finishApplicationDeletion(owner.id, app.id);
+      })().finally(() => deletions.delete(app.id));
+      deletions.set(app.id, operation);
+    }
+    try { res.json({ ok: true, projectId: await operation }); }
+    catch { throw new ApiError(503, 'application_delete_incomplete', 'Удаление не завершено. Приём событий остановлен. Повторите удаление этого приложения.'); }
+  });
   router.post('/apps/:appId/keys/rotate', (req, res) => {
     const owner = req.accountSession.user.id, rawKey = accounts.rotateKey(owner, req.params.appId);
     sendApplication(req, res, accounts.application(owner, req.params.appId), rawKey);

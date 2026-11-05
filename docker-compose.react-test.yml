@@ -13,7 +13,7 @@ services:
       GF_SERVER_ROOT_URL: http://localhost:18086/grafana/
   checks:
     environment:
-      EXPECTED_DASHBOARD_TITLE: UlsaTrackerStyle SDK 0.11.1
+      EXPECTED_DASHBOARD_TITLE: UlsaTrackerStyle SDK 0.11.2
       EXPECTED_FRAME_ORIGIN: http://localhost:18086
       EXPECTED_APP_ORIGIN: http://localhost:18086
       FRONTEND_TEST_URL: http://frontend:8080

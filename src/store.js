@@ -41,6 +41,10 @@ export class AnalyticsStore {
     return result;
   }
 
+  deleteProjectEvents(projectId) {
+    return this.execute(() => this.connection.run('DELETE FROM events WHERE project_id = $project', { project: projectId }));
+  }
+
   ingest(projectId, events) {
     return this.execute(async () => {
       const unique = [...new Map(events.map(e => [e.eventId, e])).values()];

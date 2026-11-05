@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { request as httpRequest } from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -39,7 +40,7 @@ async function fixture(t, overrides = {}) {
     };
     return { api, call, session, register, cookies, token: () => csrf };
   }
-  return { client, accounts, store };
+  return { client, accounts, store, base };
 }
 async function makeApplication(client, platform = 'android') {
   const response = await client.api('/projects', { name: '<project>' }); assert.equal(response.status, 201);
@@ -147,4 +148,86 @@ test('rendered Grafana subpath exits stay on the browser host and enforce owner/
   const setup = await a.call('/grafana/console/apps/' + data.application.id); assert.equal(setup.status, 303); assert.equal(setup.headers.get('location'), '/console/apps/' + data.application.id);
   assert.equal((await b.call('/grafana/console/apps/' + data.application.id)).status, 404);
   const anonymous = await guest.call('/grafana/console'); assert.equal(anonymous.status, 303); assert.equal(anonymous.headers.get('location'), '/login');
+});
+
+
+test('deleting one application needs owner, CSRF and exact confirmation, removes events/keys and preserves its sibling', async t => {
+  const f = await fixture(t), a = f.client(), b = f.client(), guest = f.client();
+  await a.register(); await b.register(); const data = await makeApplication(a);
+  const sibling = await (await a.api('/projects/' + data.project.id + '/apps', { name: 'Current Android', platform: 'android', identifier: 'ru.semius.domcollection' })).json();
+  for (const id of [data.application.id, sibling.application.id]) assert.equal((await a.api('/apps/' + id + '/test', { name: 'screen_view', screen: 'home' })).status, 200);
+  const path = '/apps/' + data.application.id + '/delete', confirmation = data.application.identifier;
+  assert.equal((await guest.api(path, { confirmation })).status, 401);
+  assert.equal((await b.api(path, { confirmation })).status, 404);
+  assert.equal((await a.call('/api/console' + path, undefined, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmation }) })).status, 403);
+  assert.equal((await a.api(path, { confirmation: sibling.application.identifier })).status, 400);
+  assert.ok(f.accounts.resolveKey(data.rawKey));
+  assert.equal((await f.store.stats(data.application.id, 7)).totals.events, 1);
+  const response = await a.api(path, { confirmation }); assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true, projectId: data.project.id });
+  assert.equal((await a.api('/apps/' + data.application.id)).status, 404);
+  assert.equal((await a.call('/console/apps/' + data.application.id + '/data')).status, 404);
+  assert.equal((await a.call('/console/apps/' + data.application.id + '/export.json?period=all&kind=events&to=' + Date.now())).status, 404);
+  assert.equal(f.accounts.resolveKey(data.rawKey), null);
+  assert.equal(f.accounts.db.prepare('SELECT count(*) AS n FROM ingest_keys WHERE app_id=?').get(data.application.id).n, 0);
+  assert.equal((await f.store.stats(data.application.id, 7)).totals.events, 0);
+  assert.equal((await f.store.stats(sibling.application.id, 7)).totals.events, 1);
+  const project = await (await a.api('/projects/' + data.project.id)).json();
+  assert.deepEqual(project.applications.map(app => app.id), [sibling.application.id]);
+  assert.equal(f.accounts.resolveKey(sibling.rawKey).id, sibling.application.id);
+});
+
+test('interrupted deletion stays disabled and visible for retry, even when storage applied deletion before a lost response', async t => {
+  const f = await fixture(t), c = f.client(); await c.register(); const data = await makeApplication(c);
+  await c.api('/apps/' + data.application.id + '/test', { name: 'screen_view', screen: 'home' });
+  const remove = f.store.deleteProjectEvents.bind(f.store);
+  f.store.deleteProjectEvents = async id => { await remove(id); throw new Error('lost delete response'); };
+  const path = '/apps/' + data.application.id + '/delete', body = { confirmation: data.application.identifier };
+  const failed = await c.api(path, body); assert.equal(failed.status, 503); assert.equal((await failed.json()).error.code, 'application_delete_incomplete');
+  const pending = await (await c.api('/apps/' + data.application.id)).json();
+  assert.equal(pending.application.deleting, true); assert.ok(pending.keys.every(key => key.revoked_at));
+  assert.equal(f.accounts.resolveKey(data.rawKey), null);
+  assert.equal((await c.api('/apps/' + data.application.id + '/test', { name: 'screen_view' })).status, 404);
+  assert.equal((await c.api('/apps/' + data.application.id + '/keys/rotate', {})).status, 404);
+  assert.equal((await c.call('/console/apps/' + data.application.id + '/data')).status, 404);
+  f.store.deleteProjectEvents = remove;
+  assert.equal((await c.api(path, body)).status, 200);
+  assert.equal((await c.api('/projects/' + data.project.id)).status, 200);
+});
+
+test('simultaneous delete submissions share cleanup and both receive the same successful result', async t => {
+  const f = await fixture(t), c = f.client(); await c.register(); const data = await makeApplication(c);
+  let release, entered, calls = 0;
+  const gate = new Promise(resolve => { release = resolve; }), started = new Promise(resolve => { entered = resolve; });
+  const remove = f.store.deleteProjectEvents.bind(f.store);
+  f.store.deleteProjectEvents = async id => { calls++; entered(); await gate; await remove(id); };
+  const first = c.api('/apps/' + data.application.id + '/delete', { confirmation: data.application.identifier });
+  await started;
+  // Wait for the second request to join cleanup rather than relying on a wall-clock sleep.
+  const begin = f.accounts.beginApplicationDeletion.bind(f.accounts);
+  let joined;
+  const ready = new Promise(resolve => { joined = resolve; });
+  f.accounts.beginApplicationDeletion = (...args) => { const result = begin(...args); joined(); return result; };
+  const second = c.api('/apps/' + data.application.id + '/delete', { confirmation: data.application.identifier });
+  await ready; release();
+  assert.equal((await first).status, 200); assert.equal((await second).status, 200); assert.equal(calls, 1);
+});
+
+test('a request authorised before deletion cannot write after its slow JSON body finishes', async t => {
+  const f = await fixture(t), c = f.client(); await c.register(); const data = await makeApplication(c);
+  const packet = JSON.stringify({ schemaVersion: 1, events: [{ eventId: randomUUID(), sessionId: randomUUID(), occurredAt: new Date().toISOString(), name: 'screen_view', platform: 'android' }] });
+  let authorised;
+  const started = new Promise(resolve => { authorised = resolve; }), resolveKey = f.accounts.resolveKey.bind(f.accounts);
+  f.accounts.resolveKey = raw => { const result = resolveKey(raw); if (raw === data.rawKey && result) authorised(); return result; };
+  let request;
+  const response = new Promise((resolve, reject) => {
+    request = httpRequest(f.base + '/api/v1/events', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(packet), Authorization: 'Bearer ' + data.rawKey } }, res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+    request.on('error', reject); request.write(packet.slice(0, 1));
+  });
+  t.after(() => request.destroy());
+  await started;
+  assert.equal((await c.api('/apps/' + data.application.id + '/delete', { confirmation: data.application.identifier })).status, 200);
+  request.end(packet.slice(1));
+  assert.equal(await response, 401);
+  assert.equal((await f.store.stats(data.application.id, 7)).totals.events, 0);
 });

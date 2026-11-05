@@ -1,13 +1,13 @@
 # Local operator monitoring. Combine with docker-compose.yml.
 services:
   app:
-    image: ulsatrackerstyle-sdk:0.11.1
+    image: ulsatrackerstyle-sdk:0.11.2
     build: {context: ., target: monitoring-runtime}
     pull_policy: never
     environment:
       METRICS_ENABLED: "1"
       METRICS_PORT: "9100"
-      LAB_IMAGE_VERSION: 0.11.1
+      LAB_IMAGE_VERSION: 0.11.2
       GRAFANA_ADMIN_PASSWORD_FILE: /run/secrets/product_dashboard_password
     volumes:
       - grafanaplugins4234:/opt/ulsatracker/grafana-plugins:ro
@@ -24,6 +24,8 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ""
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/product_dashboard_password
       GF_SECURITY_CONTENT_SECURITY_POLICY: "true"
+      # Application dashboards change at runtime; avoid stale per-dashboard grants.
+      GF_RBAC_PERMISSION_CACHE: "false"
     secrets: [product_dashboard_password]
     group_add: ["65530"]
     volumes:

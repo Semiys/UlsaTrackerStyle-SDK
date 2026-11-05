@@ -180,3 +180,16 @@ test('all-time boundary includes history older than a year and isolates empty an
   assert.equal(await f.store.firstEventAt(f.project), first);
   assert.equal(await f.store.firstEventAt(f.project + '_empty'), null);
 });
+
+
+test('application event deletion waits for prior writes, removes only its rows and is safe to retry', options, async t => {
+  const f = await fixture(t), sibling = 'test_' + randomUUID().replaceAll('-', '');
+  await f.store.ingest(sibling, batch([event()]));
+  const accepted = f.store.ingest(f.project, batch([event(), event()]));
+  const removed = f.store.deleteProjectEvents(f.project);
+  assert.equal((await accepted).accepted, 2); await removed;
+  assert.equal(Number((await f.store.rows('SELECT count() AS n FROM events WHERE project_id={project:String}', { project: f.project }))[0].n), 0);
+  assert.equal((await f.store.stats(sibling, 7)).totals.events, 1);
+  await f.store.deleteProjectEvents(f.project);
+  assert.equal((await f.store.stats(sibling, 7)).totals.events, 1);
+});

@@ -5,7 +5,7 @@ export async function request<T>(path: string, options: { body?: unknown; csrf?:
   let response: Response;
   try { response = await fetch('/api/console' + path, {
     method: options.body === undefined ? 'GET' : 'POST', credentials: 'same-origin', cache: 'no-store',
-    signal: options.signal ?? AbortSignal.timeout(15000), headers: options.body === undefined ? {} : { 'Content-Type': 'application/json' },
+    signal: options.signal ?? AbortSignal.timeout(/^\/apps\/[^/]+\/delete$/.test(path) ? 60000 : 15000), headers: options.body === undefined ? {} : { 'Content-Type': 'application/json' },
     ...(options.body === undefined ? {} : { body: JSON.stringify({ ...options.body as object, csrfToken: options.csrf }) }),
   });
   } catch (error) {

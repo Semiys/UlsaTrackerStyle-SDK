@@ -115,7 +115,7 @@ function ProjectPage() {
   return <div className="console-main"><Link className="button secondary" to="/console">Все проекты</Link>
     <div className="console-heading"><div><p className="eyebrow">{project.archived ? 'Проект в архиве' : 'Проект'}</p><h1>{project.name}</h1><p className="muted">Каждое приложение получает собственный ключ и статистику.</p></div></div>
     {project.archived && <Notice>Приём новых событий остановлен. Сохранённая статистика доступна.</Notice>}
-    <div className="console-cards">{applications.map(a => <Link key={a.id} className="console-card" to={'/console/apps/' + a.id}><p className="eyebrow">{a.platform.toUpperCase()}</p><h2>{a.name}</h2><p className="muted">{a.identifier}</p><span className="console-card-action">Подключение и статистика</span></Link>)}</div>
+    <div className="console-cards">{applications.map(a => <Link key={a.id} className="console-card" to={'/console/apps/' + a.id}><p className="eyebrow">{a.platform.toUpperCase()}</p><h2>{a.name}</h2><p className="muted">{a.identifier}</p><span className="console-card-action">{a.deleting ? 'Завершить удаление' : 'Подключение и статистика'}</span></Link>)}</div>
     {!applications.length && <section className="console-empty"><h2>Добавьте приложение</h2><p className="muted">Для Android нужен package name, для сайта — origin с протоколом и портом.</p></section>}
     {!project.archived && <section className="console-section"><h2>Новое приложение</h2><Form onSubmit={async form => {
       const result = await post<ApplicationData>('/projects/' + project.id + '/apps', Object.fromEntries(form));
@@ -134,15 +134,17 @@ function ProjectPage() {
 }
 function ApplicationRoute() { const { appId } = useParams(); return <ApplicationPage key={appId} />; }
 function ApplicationPage() {
-  const { appId } = useParams(), { session, post } = useSession(), data = useResource<ApplicationData>('/apps/' + appId);
+  const { appId } = useParams(), { session, post } = useSession(), navigate = useNavigate(), data = useResource<ApplicationData>('/apps/' + appId);
   const [rawKey, setRawKey] = useState(() => pendingKey?.appId === appId ? pendingKey?.value ?? '' : '');
   const [confirm, setConfirm] = useState<string | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false), [deleteIdentifier, setDeleteIdentifier] = useState('');
   useEffect(() => { pendingKey = null; return () => { pendingKey = null; }; }, []);
   if (!data.data) return <div className="console-main"><Resource {...data} /></div>;
   const { application: a, keys } = data.data;
   return <div className="console-main"><Link className="button secondary" to={'/console/projects/' + a.project_id}>{a.project_name}</Link>
-    <div className="console-heading"><div><p className="eyebrow">{a.platform.toUpperCase()}</p><h1>{a.name}</h1><p className="muted">{a.identifier}</p></div><Link className="button" to={'/console/apps/' + a.id + '/stats'}>Открыть статистику</Link></div>
-    {rawKey && <section className="console-empty"><h2>Сохраните ключ отправки</h2><p className="muted">Он показывается один раз. После закрытия страницы восстановить полный ключ нельзя.</p><CopyCode value={rawKey} label="Ключ отправки" /><button className="button secondary" onClick={() => setRawKey('')}>Я сохранил ключ</button></section>}
+    <div className="console-heading"><div><p className="eyebrow">{a.platform.toUpperCase()}</p><h1>{a.name}</h1><p className="muted">{a.identifier}</p></div>{!a.deleting && <Link className="button" to={'/console/apps/' + a.id + '/stats'}>Открыть статистику</Link>}</div>
+    {a.deleting && <Notice error>Удаление не завершено. Приём событий остановлен. Повторите удаление ниже.</Notice>}
+    {!a.deleting && <>{rawKey && <section className="console-empty"><h2>Сохраните ключ отправки</h2><p className="muted">Он показывается один раз. После закрытия страницы восстановить полный ключ нельзя.</p><CopyCode value={rawKey} label="Ключ отправки" /><button className="button secondary" onClick={() => setRawKey('')}>Я сохранил ключ</button></section>}
     <section className="console-section"><h2>Подключение</h2><p>Адрес сервиса: <code>{session.endpoint}</code></p><div className="page-actions"><Link className="button secondary" to={'/guide#' + (a.platform === 'android' ? 'android' : a.platform === 'web' ? 'javascript' : 'project')}>Пошаговая инструкция</Link>{a.platform === 'web' && <a className="button secondary" href="/sdk-demo">Проверить JavaScript SDK</a>}</div>
       {a.platform === 'ios' ? <p className="muted">Готового iOS-адаптера SDK пока нет. Доступен контракт HTTP API v1.</p> : <ApplicationExample a={a} rawKey={rawKey} endpoint={session.endpoint} />}
     </section>
@@ -153,7 +155,29 @@ function ApplicationPage() {
         if (busy) return; setBusy(true); setError('');
         try { const result = await post<ApplicationData>('/apps/' + a.id + '/keys/' + (confirm === 'rotate' ? 'rotate' : confirm + '/revoke'), {}); setRawKey(result.rawKey ?? ''); setConfirm(null); data.retry(); } catch(e) { setError((e as Error).message); } finally { setBusy(false); }
       }}>Подтвердить</button><button className="button secondary" disabled={busy} onClick={() => setConfirm(null)}>Отменить</button></div>{error && <Notice error>{error}</Notice>}</section>}
-    </section><section className="console-section"><h2>Проверить соединение</h2><p className="muted">Тест из кабинета проверяет сервер и графики. Сам SDK проверяйте на устройстве или сайте.</p><Link className="button secondary" to={'/console/apps/' + a.id + '/test'}>Отправить тестовое событие</Link></section>
+    </section><section className="console-section"><h2>Проверить соединение</h2><p className="muted">Тест из кабинета проверяет сервер и графики. Сам SDK проверяйте на устройстве или сайте.</p><Link className="button secondary" to={'/console/apps/' + a.id + '/test'}>Отправить тестовое событие</Link></section></>}
+    <section className="console-section application-delete"><h2>Удаление приложения</h2>
+      <p className="muted">Будут удалены это приложение, все его ключи, панель и накопленные события. Восстановить их в кабинете нельзя. Проект и другие приложения сохранятся.</p>
+      {!deleteOpen ? <button className="button danger" onClick={() => { setConfirm(null); setDeleteOpen(true); }}>Удалить приложение</button> :
+        <section className="confirm-panel" aria-label="Подтверждение удаления приложения">
+          <h3>Удалить «{a.name}»?</h3><p>Идентификатор: <code className="application-identifier">{a.identifier}</code></p>
+          <Form onSubmit={async form => {
+            try {
+              const result = await post<{ projectId: string }>('/apps/' + a.id + '/delete', { confirmation: form.get('confirmation') });
+              setRawKey(''); pendingKey = null; navigate('/console/projects/' + result.projectId, { replace: true });
+            } catch (e) {
+              setRawKey('');
+              // A lost success response must not trap the owner on a deleted application.
+              try { await request<ApplicationData>('/apps/' + a.id); }
+              catch (readError) { if (readError instanceof RequestError && readError.status === 404) { navigate('/console/projects/' + a.project_id, { replace: true }); return; } }
+              data.retry(); throw e;
+            }
+          }}>
+            <label>Введите идентификатор приложения для подтверждения<input name="confirmation" value={deleteIdentifier} onChange={e => setDeleteIdentifier(e.target.value)} autoComplete="off" spellCheck={false} maxLength={200} autoFocus required /></label>
+            <div className="controls"><button className="button danger" disabled={deleteIdentifier !== a.identifier}>Удалить без возможности восстановления</button><button type="button" className="button secondary" onClick={() => { setDeleteOpen(false); setDeleteIdentifier(''); }}>Отменить</button></div>
+          </Form>
+        </section>}
+    </section>
   </div>;
 }
 function ApplicationExample({ a, rawKey, endpoint }: { a: Application; rawKey: string; endpoint: string }) {

@@ -69,6 +69,14 @@ export class ClickHouseAnalyticsStore {
     });
   }
 
+  deleteProjectEvents(projectId) {
+    // Queue after already accepted writes and wait until deletion is visible.
+    return this.execute(() => this.client.command({
+      query: 'ALTER TABLE events DELETE WHERE project_id = {project:String}',
+      query_params: { project: projectId }, clickhouse_settings: { mutations_sync: 2 },
+    }));
+  }
+
   exportRows(projectId, { kind, from, to }) {
     return this.execute(async () => {
       const parameters = { project: projectId, to, limit: CSV_ROW_LIMIT + 1, ...(from !== null ? { from } : {}) };

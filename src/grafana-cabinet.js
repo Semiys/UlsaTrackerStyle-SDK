@@ -82,11 +82,25 @@ export class GrafanaCabinet {
       ];
       await this.api('/api/dashboards/db', { orgId: org.id, method: 'POST', body: { dashboard, overwrite: true } });
     }
+    const existingDashboards = await this.api('/api/search?type=dash-db&limit=1000', { orgId: org.id });
+    const activeIds = new Set(applications.map(a => a.id));
+    for (const dashboard of existingDashboards) {
+      if (/^a_[a-f0-9]{32}$/.test(dashboard.uid) && !activeIds.has(dashboard.uid)) {
+        await this.api('/api/dashboards/uid/' + dashboard.uid, { method: 'DELETE', orgId: org.id, allowMissing: true });
+      }
+    }
     const identity = { orgId: Number(org.id), userId: Number(user.id), ...credentials };
     this.accounts.setGrafanaOwner(owner.id, identity.orgId, identity.userId);
     this.ready.set(owner.id, { signature, identity, until: Date.now() + 30_000 });
     if (this.ready.size > 1000) this.ready.delete(this.ready.keys().next().value);
     return identity;
+  }
+  async removeApplication(owner, appId) {
+    // Drain older provisioning before applying the reduced row policy/dashboard list.
+    await this.inFlight.get(owner.id)?.catch(() => {});
+    this.invalidate(owner.id);
+    const identity = await this.prepare(owner);
+    await this.api('/api/dashboards/uid/' + appId, { method: 'DELETE', orgId: identity.orgId, allowMissing: true });
   }
   invalidate(ownerId) { this.ready.delete(ownerId); }
   proxy() {

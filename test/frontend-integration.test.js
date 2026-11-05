@@ -48,5 +48,19 @@ test('React API, Web SDK, Grafana and exports retain isolation and ACK deduplica
     if(format==='json')assert.equal((await own.json()).row_count,2);
   }
   const html=await a.request('/grafana/d/'+app.id+'/events');assert.equal(html.status,200);assert.match(html.headers.get('content-security-policy'),/script-src/);
+
+  const sibling = await (await a.api('/projects/'+project.id+'/apps',{name:'Current Android',platform:'android',identifier:'ru.semius.domcollection'})).json();
+  assert.equal((await a.api('/apps/'+sibling.application.id+'/test',{name:'screen_view',screen:'new_android'})).status,200);
+  { const panel=await a.request('/grafana/api/dashboards/uid/'+sibling.application.id); assert.equal(panel.status,200,await panel.text()); }
+  assert.equal((await a.api('/apps/'+app.id+'/delete',{confirmation:sibling.application.identifier})).status,400);
+  const deletion=await a.api('/apps/'+app.id+'/delete',{confirmation:app.identifier});assert.equal(deletion.status,200,await deletion.clone().text());
+  assert.ok([403,404].includes((await a.request('/grafana/api/dashboards/uid/'+app.id)).status));
+  const panels=await(await a.request('/grafana/api/search?type=dash-db')).json(); assert.equal(panels.some(panel=>panel.uid===app.id),false); assert.ok(panels.some(panel=>panel.uid===sibling.application.id));
+  assert.equal((await a.api('/apps/'+app.id)).status,404);
+  const obsolete=await fetch(base+'/api/v1/events',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+rawKey,Origin:origin},body:JSON.stringify(batch)});
+  assert.equal(obsolete.status,401);
+  { const panel=await a.request('/grafana/api/dashboards/uid/'+sibling.application.id); assert.equal(panel.status,200,await panel.text()); }
+  const remaining=await(await a.api('/projects/'+project.id)).json();assert.deepEqual(remaining.applications.map(x=>x.id),[sibling.application.id]);
+  assert.equal((await(await a.request('/console/apps/'+sibling.application.id+'/data')).json()).totals.events,1);
   assert.equal((await a.api('/logout',{})).status,200);assert.equal((await a.api('/projects')).status,401);
 });

@@ -1,6 +1,6 @@
 {
   "uid": "ulsatracker",
-  "title": "UlsaTrackerStyle SDK 0.11.1",
+  "title": "UlsaTrackerStyle SDK 0.11.2",
   "description": "Динамика и сравнение активности, переходы между экранами, типы событий и точные значения по экранам и кнопкам. Сессии не равны пользователям.",
   "tags": [
     "UlsaTrackerStyle",

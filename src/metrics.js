@@ -11,7 +11,7 @@ export function metricRoute(req) {
   if (/^\/api\/console(?:\/|$)/.test(path)) {
     if (/^\/api\/console\/(?:session|guide|register|login|logout|projects)$/.test(path)) return path;
     if (/^\/api\/console\/projects\/[^/]+(?:\/(?:apps|settings))?$/.test(path)) return path.replace(/^\/api\/console\/projects\/[^/]+/, '/api/console/projects/:projectId');
-    if (/^\/api\/console\/apps\/[^/]+(?:\/(?:statistics|test|keys\/rotate))?$/.test(path)) return path.replace(/^\/api\/console\/apps\/[^/]+/, '/api/console/apps/:appId');
+    if (/^\/api\/console\/apps\/[^/]+(?:\/(?:statistics|test|delete|keys\/rotate))?$/.test(path)) return path.replace(/^\/api\/console\/apps\/[^/]+/, '/api/console/apps/:appId');
     if (/^\/api\/console\/apps\/[^/]+\/keys\/[^/]+\/revoke$/.test(path)) return '/api/console/apps/:appId/keys/:keyId/revoke';
     return 'other';
   }

@@ -55,6 +55,7 @@ export function createApp({ config, store, accounts = null, grafana = null, metr
     if (!req.is('application/json')) return next(new ApiError(415, 'unsupported_media_type', 'Требуется Content-Type: application/json.'));
     next();
   }, express.json({ limit: '64kb', strict: true }), async (req, res) => {
+    if (req.analyticsApplication && !accounts.resolveKey(req.get('Authorization').slice(7))) throw new ApiError(401, 'unauthorized', 'Нужен действующий ключ отправки.');
     const events = validateBatch(req.body);
     if (req.analyticsApplication && events.some(event => event.platform !== req.analyticsApplication.platform)) throw new ApiError(400, 'platform_mismatch', 'Платформа событий не совпадает с настройкой приложения.');
     const result = await store.ingest(req.analyticsApplication?.id ?? config.projectId, events);

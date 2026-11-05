@@ -135,3 +135,29 @@ test('HTTP account flow isolates events, rejects CSRF and wrong origins, and inv
   assert.equal((await a.post('/logout', { csrfToken: csrf })).status, 303);
   assert.equal((await fetch(url + '/console', { headers: { Cookie: 'ulsa_session=' + oldCookie }, redirect: 'manual' })).status, 303);
 });
+
+
+test('account schema v1 migrates without changing keys and pending application deletion survives reopening', async t => {
+  const f = await accountFixture(t);
+  const owner = await f.accounts.register({ name: 'Owner', email: 'migration@example.test', password });
+  const project = f.accounts.createProject(owner.id, 'Keep project');
+  const old = f.accounts.createApplication(owner.id, project.id, { name: 'Old', platform: 'web', identifier: 'https://old.example.test' });
+  const current = f.accounts.createApplication(owner.id, project.id, { name: 'Current', platform: 'android', identifier: 'ru.semius.domcollection' });
+  const secret = f.accounts.secret;
+  // Reconstruct the previous, populated schema before reopening with migration code.
+  f.accounts.db.exec('ALTER TABLE applications DROP COLUMN deleting_at; UPDATE metadata_version SET version=1');
+  f.reopen();
+  assert.equal(f.accounts.db.prepare('SELECT version FROM metadata_version').get().version, 2);
+  assert.equal(f.accounts.secret, secret); assert.equal(f.accounts.resolveKey(old.key).id, old.application.id);
+  assert.throws(() => f.accounts.beginApplicationDeletion(owner.id, old.application.id, current.application.identifier), { code: 'confirmation_mismatch' });
+  f.accounts.beginApplicationDeletion(owner.id, old.application.id, old.application.identifier);
+  f.reopen();
+  assert.equal(f.accounts.resolveKey(old.key), null); assert.equal(f.accounts.hasWebOrigin(old.application.identifier), false);
+  assert.throws(() => f.accounts.application(owner.id, old.application.id), { status: 404 });
+  assert.ok(f.accounts.application(owner.id, old.application.id, { allowDeleting: true }).deleting_at);
+  assert.deepEqual(f.accounts.ownerApplications(owner.id).map(a => a.id), [current.application.id]);
+  f.accounts.finishApplicationDeletion(owner.id, old.application.id); f.reopen();
+  assert.equal(f.accounts.application(owner.id, current.application.id).identifier, 'ru.semius.domcollection');
+  assert.equal(f.accounts.resolveKey(current.key).id, current.application.id);
+  assert.equal(f.accounts.projects(owner.id)[0].applications, 1);
+});

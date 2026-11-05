@@ -28,7 +28,7 @@ export class AccountStore {
       CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES owners(id),
         name TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS applications (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id),
-        name TEXT NOT NULL, platform TEXT NOT NULL, identifier TEXT NOT NULL, created_at INTEGER NOT NULL);
+        name TEXT NOT NULL, platform TEXT NOT NULL, identifier TEXT NOT NULL, created_at INTEGER NOT NULL, deleting_at INTEGER);
       CREATE TABLE IF NOT EXISTS ingest_keys (id TEXT PRIMARY KEY, app_id TEXT NOT NULL REFERENCES applications(id),
         hash TEXT NOT NULL UNIQUE, display TEXT NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
       CREATE TABLE IF NOT EXISTS grafana_owners (owner_id TEXT PRIMARY KEY REFERENCES owners(id), org_id INTEGER NOT NULL,
@@ -37,8 +37,13 @@ export class AccountStore {
       CREATE INDEX IF NOT EXISTS apps_project ON applications(project_id);
       CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires_at);`);
     const version = this.db.prepare('SELECT version FROM metadata_version').all();
-    if (!version.length) this.db.prepare('INSERT INTO metadata_version VALUES (1)').run();
-    else if (version.length !== 1 || version[0].version !== 1) { this.db.close(); throw new Error('Unsupported account database schema'); }
+    if (!version.length) this.db.prepare('INSERT INTO metadata_version VALUES (2)').run();
+    else if (version.length === 1 && version[0].version === 1) {
+      try { this.transaction(() => {
+        this.db.exec('ALTER TABLE applications ADD COLUMN deleting_at INTEGER');
+        this.db.exec('UPDATE metadata_version SET version=2');
+      }); } catch (error) { this.db.close(); throw error; }
+    } else if (version.length !== 1 || version[0].version !== 2) { this.db.close(); throw new Error('Unsupported account database schema'); }
     this.db.prepare('INSERT OR IGNORE INTO settings VALUES (?, ?)').run('master_secret', token());
     this.secret = this.db.prepare('SELECT value FROM settings WHERE name=?').get('master_secret').value;
     this.passwordWork = 0;
@@ -129,12 +134,12 @@ export class AccountStore {
   }
   ownerApplications(ownerId) {
     return this.db.prepare(`SELECT a.*, p.archived, p.owner_id, p.name AS project_name FROM applications a
-      JOIN projects p ON p.id=a.project_id WHERE p.owner_id=? ORDER BY a.created_at`).all(ownerId);
+      JOIN projects p ON p.id=a.project_id WHERE p.owner_id=? AND a.deleting_at IS NULL ORDER BY a.created_at`).all(ownerId);
   }
-  application(ownerId, appId) {
+  application(ownerId, appId, { allowDeleting = false } = {}) {
     const row = this.db.prepare(`SELECT a.*, p.owner_id, p.archived, p.name AS project_name FROM applications a
       JOIN projects p ON p.id=a.project_id WHERE a.id=? AND p.owner_id=?`).get(appId, ownerId);
-    if (!row) throw new ApiError(404, 'not_found', 'Приложение не найдено.');
+    if (!row || (row.deleting_at && !allowDeleting)) throw new ApiError(404, 'not_found', 'Приложение не найдено.');
     return row;
   }
   createApplication(ownerId, projectId, { name, platform, identifier }) {
@@ -152,12 +157,30 @@ export class AccountStore {
     return this.transaction(() => {
       if (this.applications(ownerId, projectId).length >= 20) throw new ApiError(429, 'app_limit', 'На стенде доступно до 20 приложений проекта.');
       const appId = id('a_');
-      this.db.prepare('INSERT INTO applications VALUES (?, ?, ?, ?, ?, ?)').run(appId, projectId, name, platform, identifier, Date.now());
+      this.db.prepare('INSERT INTO applications (id, project_id, name, platform, identifier, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(appId, projectId, name, platform, identifier, Date.now());
       return { application: this.application(ownerId, appId), key: this.issueKey(appId) };
     });
   }
+  beginApplicationDeletion(ownerId, appId, confirmation) {
+    return this.transaction(() => {
+      const app = this.application(ownerId, appId, { allowDeleting: true });
+      if (confirmation !== app.identifier) throw new ApiError(400, 'confirmation_mismatch', 'Введите идентификатор выбранного приложения без изменений.');
+      this.db.prepare('UPDATE applications SET deleting_at=COALESCE(deleting_at, ?) WHERE id=?').run(Date.now(), appId);
+      this.db.prepare('UPDATE ingest_keys SET revoked_at=COALESCE(revoked_at, ?) WHERE app_id=?').run(Date.now(), appId);
+      return this.application(ownerId, appId, { allowDeleting: true });
+    });
+  }
+  finishApplicationDeletion(ownerId, appId) {
+    return this.transaction(() => {
+      const app = this.application(ownerId, appId, { allowDeleting: true });
+      if (!app.deleting_at) throw new Error('Application deletion has not started');
+      this.db.prepare('DELETE FROM ingest_keys WHERE app_id=?').run(appId);
+      this.db.prepare('DELETE FROM applications WHERE id=?').run(appId);
+      return app.project_id;
+    });
+  }
   keys(ownerId, appId) {
-    this.application(ownerId, appId);
+    this.application(ownerId, appId, { allowDeleting: true });
     return this.db.prepare('SELECT id, display, created_at, revoked_at FROM ingest_keys WHERE app_id=? ORDER BY created_at DESC, id').all(appId);
   }
   issueKey(appId) {
@@ -182,11 +205,11 @@ export class AccountStore {
     if (typeof raw !== 'string' || !/^ulsa_[a-f0-9]{64}$/.test(raw)) return null;
     return this.db.prepare(`SELECT a.*, k.id AS key_id, p.owner_id FROM ingest_keys k
       JOIN applications a ON a.id=k.app_id JOIN projects p ON p.id=a.project_id
-      WHERE k.hash=? AND k.revoked_at IS NULL AND p.archived=0`).get(digest(raw)) ?? null;
+      WHERE k.hash=? AND k.revoked_at IS NULL AND p.archived=0 AND a.deleting_at IS NULL`).get(digest(raw)) ?? null;
   }
   hasWebOrigin(origin) {
     return !!this.db.prepare(`SELECT 1 FROM applications a JOIN projects p ON p.id=a.project_id
-      JOIN ingest_keys k ON k.app_id=a.id WHERE a.platform='web' AND a.identifier=? AND p.archived=0 AND k.revoked_at IS NULL LIMIT 1`).get(origin);
+      JOIN ingest_keys k ON k.app_id=a.id WHERE a.platform='web' AND a.identifier=? AND p.archived=0 AND a.deleting_at IS NULL AND k.revoked_at IS NULL LIMIT 1`).get(origin);
   }
   grafanaOwner(ownerId) { return this.db.prepare('SELECT * FROM grafana_owners WHERE owner_id=?').get(ownerId); }
   setGrafanaOwner(ownerId, orgId, userId) {
