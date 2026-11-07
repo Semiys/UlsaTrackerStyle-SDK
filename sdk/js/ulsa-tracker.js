@@ -1,6 +1,6 @@
 (function (root) {
   'use strict';
-  const VERSION = '0.1.0';
+  const VERSION = '0.1.1';
   const NAME = /^[a-z][a-z0-9_]{0,63}$/;
   const bytes = value => new TextEncoder().encode(JSON.stringify(value)).byteLength;
   const uuid = () => {
@@ -111,8 +111,14 @@
         if (response.status === 400 || response.status === 409) {
           let body; try { body = await response.json(); } catch {}
           const match = body?.error?.field?.match(/^events\[(\d+)\]/);
-          const bad = match && sent[Number(match[1])] ? [sent[Number(match[1])]] : sent;
-          const ids = new Set(bad.map(e => e.eventId)); queue = queue.filter(e => !ids.has(e.eventId)); rejected += bad.length;
+          const invalid = match && sent[Number(match[1])];
+          // A packet-level rejection does not identify which record is bad.
+          // Retry singly, retaining IDs, rather than dropping healthy neighbours.
+          if (!invalid && sent.length > 1) {
+            batchSize = 1; lastStatus = 'isolating_invalid_event'; persist(); later(1000); return status();
+          }
+          const bad = invalid ?? sent[0];
+          queue = queue.filter(e => e.eventId !== bad.eventId); rejected++;
           lastStatus = 'invalid_event'; persist(); later(1000); return status();
         }
         if (response.status !== 200) { fail(response, 'http_' + response.status); return status(); }

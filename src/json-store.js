@@ -73,6 +73,14 @@ export class JsonAnalyticsStore {
     }
   }
 
+  deleteProjectEvents(projectId) {
+    return this.execute(async () => {
+      const next = new Map([...this.records].filter(([, row]) => row.projectId !== projectId));
+      await this.persist(next);
+      this.records = next;
+    });
+  }
+
   ingest(projectId, events) {
     return this.execute(async () => {
       const unique = [...new Map(events.map(event => [event.eventId, event])).values()];

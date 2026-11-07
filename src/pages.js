@@ -3,12 +3,15 @@ import { Router, urlencoded } from 'express';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { validateBatch } from './events.js';
 import { ApiError } from './errors.js';
+import { createDataExporter } from './analytics-export.js';
+import { guideExamples } from './guide-examples.js';
 import { SERVER_VERSION, LAB_IMAGE_VERSION } from './version.js';
 
 const knownNames = new Map([['screen_view', 'Открытие экрана'], ['button_click', 'Нажатие кнопки'], ['action_success', 'Успешное действие']]);
 
 export function pageRouter({ config, store }) {
   const router = Router();
+  const sendExport = createDataExporter(store);
   const formSecret = randomBytes(32);
   const signForm = ({ eventId, sessionId, occurredAt }) => createHmac('sha256', formSecret)
     .update(JSON.stringify([eventId, sessionId, occurredAt])).digest('hex');
@@ -26,6 +29,10 @@ export function pageRouter({ config, store }) {
     next();
   });
   router.get('/', (req, res) => res.render('index', { active: 'home' }));
+  router.get('/guide', (req, res) => {
+    const guideEndpoint = config.publicUrl ?? 'http://localhost:8080';
+    res.render('guide', { active: 'guide', guideEndpoint, examples: guideExamples(guideEndpoint) });
+  });
   router.get('/events/new', (req, res) => {
     const invalidExample = req.query.example === 'invalid';
     const identity = { eventId: randomUUID(), sessionId: randomUUID(), occurredAt: new Date().toISOString() };
@@ -59,6 +66,15 @@ export function pageRouter({ config, store }) {
         actor: 'Пользователь веб-формы', operation: 'Сохранить аналитическое событие',
         reason: error.message, field: error.field ?? null, example: false });
     }
+  });
+  for (const format of ['csv', 'json']) router.get('/dashboard/export.' + format, (req, res) => {
+    if (!config.demoMode) throw new ApiError(404, 'not_found', 'Демонстрационная статистика недоступна.');
+    return sendExport(req, res, config.projectId, format);
+  });
+  router.get('/dashboard/range', async (req, res) => {
+    if (!config.demoMode) throw new ApiError(404, 'not_found', 'Демонстрационная статистика недоступна.');
+    if (!store.firstEventAt) throw new ApiError(503, 'range_unavailable', 'Весь период доступен на стенде с ClickHouse.');
+    res.json({ firstEventAt: await store.firstEventAt(config.projectId) });
   });
   router.get('/dashboard', async (req, res) => {
     if (req.accountSession) return res.redirect(303, '/console');

@@ -11,6 +11,11 @@ export function sessionMiddleware(accounts, config) {
   return (req, res, next) => {
     const raw = cookieValue(req, 'ulsa_session');
     req.accountSession = accounts.session(raw);
+    // Account pages and authenticated HTML/JSON can contain one-time sending
+    // keys and private project metadata; shared/browser caches must not retain it.
+    if (req.accountSession || /^\/(?:console|login|register)(?:\/|$)/.test(req.path)) {
+      res.set('Cache-Control', 'private, no-store');
+    }
     req.sessionToken = raw;
     res.locals.consoleEnabled = true;
     res.locals.currentUser = req.accountSession?.user ?? null;
@@ -38,7 +43,7 @@ export function authLimiter() {
   const addresses = new WindowLimiter(40, 15 * 60_000);
   const emails = new WindowLimiter(12, 15 * 60_000);
   return (req, res, next) => {
-    const ipWait = addresses.take(req.socket.remoteAddress ?? 'unknown');
+    const ipWait = addresses.take(req.ip ?? req.socket.remoteAddress ?? 'unknown');
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase().slice(0, 254) : '';
     const wait = Math.max(ipWait, email ? emails.take(email) : 0);
     if (wait) { res.set('Retry-After', String(wait)); return next(new ApiError(429, 'auth_rate_limit', 'Слишком много попыток. Попробуйте позже.')); }

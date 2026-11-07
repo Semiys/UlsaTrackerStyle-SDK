@@ -16,3 +16,11 @@
 !sdk/
 !sdk/js/
 !sdk/js/**
+
+!scripts/download-monitoring-plugin.mjs
+
+!frontend/
+!frontend/**
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/

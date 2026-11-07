@@ -1,0 +1,116 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { loadConfig } from '../src/config.js';
+import { openStore } from '../src/storage.js';
+import { createApp } from '../src/app.js';
+import { AccountStore } from '../src/accounts.js';
+import { validateBatch } from '../src/events.js';
+import { parseCsv } from './helpers/csv.mjs';
+
+const enabled = { skip: process.env.STORAGE_BACKEND !== 'clickhouse' || !process.env.DATABASE_URL };
+test('CSV download isolates owners, honours exact boundaries and exports complete deduplicated history', enabled, async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'ulsa-csv-'));
+  const config = await loadConfig({ ...process.env, DATA_DIR: directory, DEMO_MODE: '1', CONSOLE_ENABLED: '1' });
+  const store = await openStore(config), accounts = new AccountStore(config.accountsPath);
+  const server = createApp({ config, store, accounts }).listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); accounts.close(); await store.close(); await rm(directory, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const a = await accounts.register({ name: 'CSV A', email: 'a@example.test', password: 'csv-export-password-2026' });
+  const b = await accounts.register({ name: 'CSV B', email: 'b@example.test', password: 'csv-export-password-2026' });
+  const app = owner => accounts.createApplication(owner.id, accounts.createProject(owner.id, 'CSV project').id,
+    { name: 'CSV app', platform: 'web', identifier: 'http://localhost:8080' }).application;
+  const appA = app(a), appB = app(b), session = accounts.createSession(a.id), otherSession = accounts.createSession(b.id);
+  const from = Date.parse('2020-01-01T20:00:00Z'), to = from + 86400000 - 1, sessionId = randomUUID();
+  const record = (at, name = 'button_click') => validateBatch({ schemaVersion: 1, events: [{ eventId: randomUUID(), sessionId,
+    occurredAt: new Date(at).toISOString(), name, screen: name === 'screen_view' ? 'profile' : 'home',
+    platform: 'web', appVersion: '=2+2', properties: name === 'button_click' ? { button: 'save', note: 'Текст, "кавычки"\nстрока' } : {} }] }, at + 1000)[0];
+  const inside = [record(from), record(from + 1000), record(to, 'screen_view')];
+  await store.ingest(appA.id, [...inside, record(from - 1), record(to + 1), record(Date.parse('2018-01-01T00:00:00Z'))]);
+  await store.ingest(appA.id, [inside[0]]);
+  await store.ingest(appB.id, [record(from)]);
+  const parameters = new URLSearchParams({ from: String(from), to: String(to), timezone: 'Europe/Astrakhan' });
+  const request = (path, token = session.raw) => fetch(base + path, { redirect: 'manual', headers: { Cookie: `ulsa_session=${token}` } });
+  const path = `/console/apps/${appA.id}/export.csv`;
+  const summary = await request(path + '?' + parameters);
+  assert.equal(summary.status, 200); assert.equal(summary.headers.get('cache-control'), 'private, no-store');
+  assert.match(summary.headers.get('content-type'), /^text\/csv/); assert.match(summary.headers.get('content-disposition'), /attachment; filename=/);
+  const bytes = new Uint8Array(await summary.arrayBuffer()); assert.deepEqual([...bytes.slice(0, 3)], [239, 187, 191]);
+  const grouped = parseCsv(new TextDecoder().decode(bytes));
+  assert.equal(grouped.rows.length, 2); assert.equal(grouped.rows.reduce((sum, row) => sum + Number(row.event_count), 0), 3);
+  assert.ok(grouped.rows.every(row => row.sessions_in_group === '1' && row.app_version === "'=2+2"));
+  const raw = await request(path + '?' + parameters + '&kind=events');
+  const detailed = parseCsv(await raw.text()); assert.equal(detailed.rows.length, 3);
+  assert.equal(detailed.rows[0].occurred_at_local, '2020-01-02 00:00:00.000 +04:00');
+  assert.equal(JSON.parse(detailed.rows[0].properties_json).note, 'Текст, "кавычки"\nстрока');
+  assert.equal(detailed.rows.at(-1).occurred_at_utc, new Date(to).toISOString());
+  const history = await request(path + `?period=all&kind=events&to=${to + 1000}`);
+  assert.equal(parseCsv(await history.text()).rows.length, 6);
+  const empty = await request(path + '?from=100000&to=100001'); assert.equal(empty.status, 200); assert.equal(parseCsv(await empty.text()).rows.length, 0);
+  assert.equal((await request(path + '?' + parameters, otherSession.raw)).status, 404);
+  assert.equal((await fetch(base + path + '?' + parameters, { redirect: 'manual' })).status, 303);
+  assert.equal((await request(path + '?' + parameters + '&kind=xls')).status, 400);
+  await store.ingest(config.projectId, [record(from, 'screen_view')]);
+  const demo = await fetch(base + '/dashboard/export.csv?' + parameters);
+  const demoRows = parseCsv(await demo.text()).rows; assert.equal(demo.status, 200);
+  assert.ok(demoRows.every(row => row.event_type !== 'button_click' || row.app_version !== "'=2+2"));
+});
+
+
+test('JSON download matches CSV boundaries/deduplication, isolates owners and shares the download quota', enabled, async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'ulsa-json-'));
+  const config = await loadConfig({ ...process.env, DATA_DIR: directory, DEMO_MODE: '1', CONSOLE_ENABLED: '1' });
+  const store = await openStore(config), accounts = new AccountStore(config.accountsPath);
+  const server = createApp({ config, store, accounts }).listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); accounts.close(); await store.close(); await rm(directory, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const owner = await accounts.register({ name: 'JSON A', email: 'json-a@example.test', password: 'json-export-password-2026' });
+  const other = await accounts.register({ name: 'JSON B', email: 'json-b@example.test', password: 'json-export-password-2026' });
+  const application = accounts.createApplication(owner.id, accounts.createProject(owner.id, 'JSON').id, { name: 'JSON app', platform: 'web', identifier: 'http://localhost:8080' }).application;
+  const otherApp = accounts.createApplication(other.id, accounts.createProject(other.id, 'JSON B').id, { name: 'Other app', platform: 'web', identifier: 'http://localhost:8080' }).application;
+  const session = accounts.createSession(owner.id), otherSession = accounts.createSession(other.id);
+  const from = Date.parse('2020-02-01T20:00:00Z'), to = from + 1000, sessionId = randomUUID();
+  const event = (at, button = 'save') => validateBatch({ schemaVersion: 1, events: [{ eventId: randomUUID(), sessionId,
+    occurredAt: new Date(at).toISOString(), name: 'button_click', screen: 'home', platform: 'web', appVersion: '=2+2',
+    properties: { button, note: 'Текст, "кавычки"\nстрока', numeric: 7, ok: true, empty: null } }] }, at + 1000)[0];
+  const inside = [event(from), event(to)];
+  await store.ingest(application.id, [...inside, event(from - 1), event(to + 1)]);
+  await store.ingest(application.id, [inside[0]]);
+  await store.ingest(otherApp.id, [event(from, 'foreign-owner')]);
+  const params = new URLSearchParams({ from: String(from), to: String(to), timezone: 'Europe/Astrakhan' });
+  const path = `/console/apps/${application.id}/export.`;
+  const get = (url, token = session.raw) => fetch(base + url, { redirect: 'manual', headers: { Cookie: `ulsa_session=${token}` } });
+  const summary = await get(path + 'json?' + params);
+  assert.equal(summary.status, 200); assert.match(summary.headers.get('content-type'), /^application\/json/);
+  assert.match(summary.headers.get('content-disposition'), /attachment; filename=".*\.json"/);
+  assert.equal(summary.headers.get('cache-control'), 'private, no-store');
+  const grouped = await summary.json(); assert.equal(grouped.row_count, 1);
+  assert.equal(grouped.rows[0].event_count, 2); assert.equal(grouped.rows[0].sessions_in_group, 1);
+  assert.equal(grouped.rows[0].app_version, '=2+2');
+  const raw = await get(path + 'json?' + params + '&kind=events'), detailed = await raw.json();
+  assert.equal(raw.headers.get('x-export-rows'), '2'); assert.equal(detailed.row_count, 2);
+  assert.deepEqual(detailed.rows.map(row => row.event_id), inside.map(row => row.eventId));
+  assert.equal(detailed.rows[0].occurred_at_local, '2020-02-02 00:00:00.000 +04:00');
+  assert.deepEqual(detailed.rows[0].properties, inside[0].properties);
+  assert.equal(detailed.rows.at(-1).occurred_at_utc, new Date(to).toISOString());
+  const csv = parseCsv(await (await get(path + 'csv?' + params + '&kind=events')).text());
+  assert.deepEqual(csv.rows.map(row => row.event_id), detailed.rows.map(row => row.event_id));
+  const all = await (await get(path + `json?period=all&kind=events&to=${to + 1000}`)).json();
+  assert.equal(all.row_count, 4); assert.equal(all.period.start_utc, null);
+  const empty = await (await get(path + 'json?from=100000&to=100001')).json(); assert.deepEqual(empty.rows, []);
+  const foreign = await get(path + 'json?' + params, otherSession.raw); assert.equal(foreign.status, 404); assert.equal(foreign.headers.get('content-disposition'), null);
+  assert.equal((await fetch(base + path + 'json?' + params, { redirect: 'manual' })).status, 303);
+  assert.equal((await get(path + 'json?' + params + '&kind=invalid')).status, 400);
+  assert.equal((await get(path + 'yaml?' + params)).status, 404);
+  assert.equal((await get(path + 'csv?' + params)).status, 200);
+  const limited = await get(path + 'json?' + params); assert.equal(limited.status, 429); assert.equal(limited.headers.get('content-disposition'), null);
+  assert.ok(limited.headers.get('retry-after'));
+  const demo = await fetch(base + '/dashboard/export.json?' + params + '&kind=events');
+  assert.equal(demo.status, 200); const demoData = await demo.json();
+  assert.ok(demoData.rows.every(row => !inside.some(event => event.eventId === row.event_id)));
+  assert.ok(!JSON.stringify(demoData).includes('foreign-owner'));
+});

@@ -8,6 +8,7 @@ FROM lab-dependencies AS dependencies
 RUN npm ci --omit=dev --no-audit --no-fund
 
 FROM dependencies AS test
+COPY frontend/server.mjs ./frontend/server.mjs
 COPY src ./src
 COPY test ./test
 COPY public ./public
@@ -90,3 +91,40 @@ EXPOSE 3000
 USER node
 
 FROM lab4 AS runtime
+
+
+# Current product/monitoring release. Reproduce historical labs from their tagged source.
+FROM node:24.22.2-bookworm-slim AS monitoring-dependencies
+WORKDIR /app
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --omit=optional --no-audit --no-fund
+
+FROM monitoring-dependencies AS monitoring-test
+COPY frontend/server.mjs ./frontend/server.mjs
+COPY src ./src
+COPY test ./test
+COPY public ./public
+COPY views ./views
+COPY grafana ./grafana
+COPY sdk/js ./sdk/js
+CMD ["npm", "run", "test:release"]
+
+FROM --platform=$BUILDPLATFORM node:24.22.2-bookworm-slim AS monitoring-plugin
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends unzip ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY scripts/download-monitoring-plugin.mjs /build/download-monitoring-plugin.mjs
+RUN node /build/download-monitoring-plugin.mjs "$TARGETARCH"
+
+FROM monitoring-dependencies AS monitoring-runtime
+COPY src ./src
+COPY public ./public
+COPY views ./views
+COPY grafana ./grafana
+COPY sdk/js ./sdk/js
+COPY --from=monitoring-plugin /bundle /opt/ulsatracker/grafana-plugins
+RUN mkdir -p /app/data && chown node:node /app/data && chmod -R a+rX /opt/ulsatracker/grafana-plugins
+ENV NODE_ENV=production PORT=8080 DATA_DIR=/app/data STORAGE_BACKEND=clickhouse LAB_IMAGE_VERSION=0.11.2
+EXPOSE 8080 3000 9100
+USER node
+CMD ["node", "src/server.js"]
