@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { ApiError } from './errors.js';
 import { requireCsrf } from './console-security.js';
 import { validateBatch } from './events.js';
-import { SERVER_VERSION } from './version.js';
+import { SERVER_VERSION, LAB_IMAGE_VERSION } from './version.js';
 import { guideExamples } from './guide-examples.js';
 
 const field = (req, name) => typeof req.body?.[name] === 'string' ? req.body[name] : '';
@@ -23,7 +23,7 @@ export function consoleApiRouter({ config, accounts, store, grafana, limits, met
   router.use(json({ limit: '12kb', strict: true }));
   router.get('/session', (req, res) => res.json({
     user: req.accountSession?.user ?? null, csrfToken: res.locals.consoleCsrf,
-    endpoint: config.publicUrl, version: SERVER_VERSION, demoMode: config.demoMode === true, grafanaAvailable: !!grafana,
+    endpoint: config.publicUrl, version: SERVER_VERSION, demoMode: config.demoMode === true, grafanaAvailable: !!grafana, ...(config.demoMode ? { labImageVersion: LAB_IMAGE_VERSION } : {}),
   }));
   router.get('/guide', (req, res) => res.json({ endpoint: config.publicUrl, examples: guideExamples(config.publicUrl) }));
   for (const mode of ['register', 'login']) router.post('/' + mode, requireCsrf, limits.auth, async (req, res) => {

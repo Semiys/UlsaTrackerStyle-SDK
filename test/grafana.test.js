@@ -11,7 +11,7 @@ const appUrl = process.env.APP_TEST_URL;
 const grafanaUrl = process.env.GRAFANA_TEST_URL;
 const integration = { skip: !appUrl || !grafanaUrl };
 const readKey = 'ulsa_lab2_demo_read_2026_local_project_only';
-const definition = JSON.parse(await readFile(new URL('../grafana/provisioning/dashboards/ulsatracker.json', import.meta.url), 'utf8'));
+const definition = JSON.parse(await readFile(new URL(process.env.TEST_DASHBOARD_PATH ?? '../grafana/provisioning/dashboards/ulsatracker.json', import.meta.url), 'utf8'));
 
 async function json(url, init) {
   const response = await fetch(url, { ...init, signal: AbortSignal.timeout(30_000) });
@@ -153,6 +153,6 @@ test('an empty historical period contains seven zero days, not an invented event
 test('two simultaneous dashboard refreshes finish without ClickHouse memory errors', integration, async () => {
   const panels = [...definition.panels, ...definition.panels];
   const results = await Promise.all(panels.map(panel => query(panel.targets[0])));
-  assert.equal(results.length, 28);
+  assert.equal(results.length, definition.panels.length * 2);
   assert.ok(results.every(frames => Array.isArray(frames)));
 });

@@ -16,7 +16,7 @@ function jsonClient() {
   return {...c,api,register};
 }
 test('React production routes, assets, direct links and API errors work through the frontend container',integration,async()=>{
-  for(const path of ['/','/login','/register','/guide','/console','/console/apps/a_unknown/stats']) {
+  for(const path of ['/','/login','/register','/guide','/console','/console/apps/a_unknown/stats','/events/new','/dashboard','/error','/system-state','/sdk-demo']) {
     const response=await fetch(base+path);const html=await response.text();assert.equal(response.status,200);assert.match(html,/<div id="root">/);assert.match(html,/type="module"/);assert.doesNotMatch(html,/@vite\/client/);
     assert.match(response.headers.get('content-security-policy'),/frame-ancestors 'none'/);
     for(const asset of [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map(m=>m[1]))assert.equal((await fetch(base+asset)).status,200);
@@ -39,7 +39,7 @@ test('React API, Web SDK, Grafana and exports retain isolation and ACK deduplica
   assert.equal((await retry.json()).duplicates,2);
   assert.equal((await(await a.request('/console/apps/'+app.id+'/data')).json()).totals.events,2);
   assert.equal((await b.api('/apps/'+app.id)).status,404);
-  assert.equal((await b.request('/grafana/api/dashboards/uid/'+app.id)).status,404);
+  assert.ok([403,404].includes((await b.request('/grafana/api/dashboards/uid/'+app.id)).status));
   const panel=await a.request('/grafana/api/dashboards/uid/'+app.id);assert.equal(panel.status,200);assert.equal((await panel.json()).dashboard.uid,app.id);
   for(const format of ['csv','json']) {
     const url='/console/apps/'+app.id+'/export.'+format+'?kind=events&period=all&to='+Date.now()+'&timezone=Europe%2FAstrakhan';

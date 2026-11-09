@@ -11,9 +11,10 @@ export function createFrontendServer({ apiUrl, distDir, publicUrl = 'http://loca
   if (!['http:','https:'].includes(origin.protocol) || origin.username || origin.password || origin.pathname !== '/') throw new Error('Invalid public origin');
   return createServer(async (req, res) => {
     let path; try { path = new URL(req.url, 'http://frontend').pathname; } catch { res.writeHead(400); return res.end(); }
-    const proxy = /^\/(?:api(?:\/|$)|grafana(?:\/|$)|sdk(?:\/|$)|health$|dashboard(?:\/|$)|events(?:\/|$)|error$|sdk-demo$)/.test(path)
+    const spa = ['/', '/guide','/login','/register','/console','/dashboard','/events/new','/error','/system-state','/sdk-demo'].includes(path) || /^\/console\/(?:projects|apps)\/[^/]+(?:\/(?:test|stats))?$/.test(path);
+    const proxy = !spa && (/^\/(?:api(?:\/|$)|grafana(?:\/|$)|sdk(?:\/|$)|health$|dashboard(?:\/|$)|events(?:\/|$)|error$|sdk-demo$|system-state(?:\/|$))/.test(path)
       || /^\/console\/apps\/[^/]+\/(?:range|data|export\.(?:csv|json))$/.test(path)
-      || /^\/[a-zA-Z0-9-]+\.(?:css|js|mjs)$/.test(path) && path !== '/theme-init.js';
+      || /^\/[a-zA-Z0-9-]+\.(?:css|js|mjs)$/.test(path) && path !== '/theme-init.js');
     if (proxy) {
       const headers = { ...req.headers };
       for (const name of ['forwarded','x-forwarded-for','x-forwarded-host','x-forwarded-proto','connection','proxy-authorization','proxy-connection','keep-alive','te','trailer','transfer-encoding','upgrade']) delete headers[name];
@@ -41,7 +42,6 @@ export function createFrontendServer({ apiUrl, distDir, publicUrl = 'http://loca
     };
     if (path === '/frontend-health') { res.writeHead(200,{ ...security,'Content-Type':'application/json','Cache-Control':'no-store' }); return res.end('{"status":"ok"}'); }
     if (!['GET','HEAD'].includes(req.method)) { res.writeHead(405,{ ...security,Allow:'GET, HEAD' }); return res.end(); }
-    const spa = ['/', '/guide','/login','/register','/console'].includes(path) || /^\/console\/(?:projects|apps)\/[^/]+(?:\/(?:test|stats))?$/.test(path);
     let decoded; try { decoded = decodeURIComponent(path); } catch { res.writeHead(400,security); return res.end(); }
     const filename = spa ? resolve(root,'index.html') : resolve(root,'.' + decoded);
     if (!filename.startsWith(root + sep) || decoded.includes('\\') || decoded.split('/').some(x => x.startsWith('.'))) { res.writeHead(404,security); return res.end(); }

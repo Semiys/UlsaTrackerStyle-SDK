@@ -20,7 +20,7 @@ async function fixture(t) {
 }
 test('production frontend serves deep links with strict CSP and assets without a development server', async t => {
   const {base}=await fixture(t);
-  for (const path of ['/','/login','/register','/guide','/console','/console/projects/p_123','/console/apps/a_123/stats']) {
+  for (const path of ['/','/login','/register','/guide','/console','/console/projects/p_123','/console/apps/a_123/stats','/events/new','/dashboard','/error','/system-state','/sdk-demo']) {
     const response=await fetch(base+path); assert.equal(response.status,200); assert.equal(await response.text(),'<div id="root">React</div>');
     assert.equal(response.headers.get('cache-control'),'no-store'); assert.match(response.headers.get('content-security-policy'),/script-src 'self'/); assert.doesNotMatch(response.headers.get('content-security-policy'),/unsafe-inline|unsafe-eval/);
   }

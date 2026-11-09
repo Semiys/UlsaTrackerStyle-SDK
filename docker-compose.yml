@@ -2,35 +2,21 @@ name: mispisit-sarantsev
 
 services:
   app:
-    image: semiys/ulsatrackerstyle-sdk:0.0.4
+    image: semiys/ulsatrackerstyle-sdk:0.0.5
     ports:
-      - "8080:8080"
       - "3000:3000"
-    environment:
-      PORT: "8080"
-      CONSOLE_ENABLED: "1"
-      PUBLIC_URL: http://localhost:8080
-      GRAFANA_INTERNAL_URL: http://dashboard:3000
-      GRAFANA_ADMIN_USER: app
-      GRAFANA_ADMIN_PASSWORD: app
-      STORAGE_BACKEND: clickhouse
-      DEMO_MODE: "1"
-      LAB_IMAGE_VERSION: 0.0.4
-      DATABASE_URL: http://db:8123
-      DATABASE_USER: app
-      DATABASE_PASSWORD: app
-      DATABASE_NAME: app
-      DASHBOARD_PROVIDER: grafana
-      DASHBOARD_PUBLIC_URL: http://localhost:3000
+    environment: {PORT: "8080", METRICS_ENABLED: "1", METRICS_PORT: "9100", CONSOLE_ENABLED: "1",
+      PUBLIC_URL: http://localhost:8080, FRONTEND_INTERNAL_URL: http://frontend:8080,
+      REVERSE_PROXY_HOPS: "1", GRAFANA_INTERNAL_URL: http://dashboard:3000, GRAFANA_ADMIN_USER: app,
+      GRAFANA_ADMIN_PASSWORD: app, STORAGE_BACKEND: clickhouse, DEMO_MODE: "1",
+      LAB_IMAGE_VERSION: 0.0.5, DATABASE_URL: http://db:8123, DATABASE_USER: app,
+      DATABASE_PASSWORD: app, DATABASE_NAME: app, DASHBOARD_PROVIDER: grafana,
+      DASHBOARD_PUBLIC_URL: http://localhost:3000}
     volumes:
       - appdata:/app/data
       - grafanaplugins4112:/opt/ulsatracker/grafana-plugins:ro
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 3s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+    healthcheck: {test: ["CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"],
+      interval: 3s, timeout: 5s, retries: 20, start_period: 10s}
     depends_on:
       db:
         condition: service_healthy
@@ -38,68 +24,71 @@ services:
     cpus: 1
   db:
     image: clickhouse/clickhouse-server:26.8.26.12
-    environment:
-      CLICKHOUSE_DB: app
-      CLICKHOUSE_USER: app
-      CLICKHOUSE_PASSWORD: app
-      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    stop_grace_period: 60s
+    environment: {CLICKHOUSE_DB: app, CLICKHOUSE_USER: app, CLICKHOUSE_PASSWORD: app,
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"}
     volumes:
       - dbdata:/var/lib/clickhouse
       - ./grafana/clickhouse-users.xml:/etc/clickhouse-server/users.d/dashboard.xml:ro
       - ./grafana/clickhouse-server.xml:/etc/clickhouse-server/config.d/local-resources.xml:ro
-    healthcheck:
-      test: ["CMD-SHELL", "clickhouse-client --host db --user \"$$CLICKHOUSE_USER\" --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1'"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
-      start_period: 5s
+    healthcheck: {test: ["CMD-SHELL", "clickhouse-client --host db --user \"$$CLICKHOUSE_USER\" --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1'"],
+      interval: 2s, timeout: 3s, retries: 30, start_period: 5s}
     mem_limit: 1g
     cpus: 2
 
   dashboard:
     image: grafana/grafana:11.4.0
     expose: ["3000"]
-    environment:
-      GF_SERVER_ROOT_URL: http://localhost:3000/grafana/
-      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
-      GF_LIVE_MAX_CONNECTIONS: "0"
-      GF_SECURITY_ADMIN_USER: app
-      GF_SECURITY_ADMIN_PASSWORD: app
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
-      GF_AUTH_DISABLE_LOGIN_FORM: "true"
-      GF_AUTH_BASIC_ENABLED: "true"
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_USERS_DEFAULT_THEME: light
-      GF_USERS_DEFAULT_LANGUAGE: ru-RU
-      GF_SECURITY_ALLOW_EMBEDDING: "true"
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/ulsatracker.json
-      GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
-      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
-      GF_PLUGINS_PUBLIC_KEY_RETRIEVAL_DISABLED: "true"
-      GF_PLUGINS_PREINSTALL_DISABLED: "true"
-      GF_LOG_LEVEL: warn
+    environment: {GF_SERVER_ROOT_URL: http://localhost:3000/grafana/,
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true", GF_LIVE_MAX_CONNECTIONS: "0", GF_SECURITY_ADMIN_USER: app,
+      GF_SECURITY_ADMIN_PASSWORD: app, GF_AUTH_ANONYMOUS_ENABLED: "true",
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer, GF_AUTH_DISABLE_LOGIN_FORM: "true",
+      GF_AUTH_BASIC_ENABLED: "true", GF_USERS_ALLOW_SIGN_UP: "false", GF_USERS_DEFAULT_THEME: light,
+      GF_USERS_DEFAULT_LANGUAGE: ru-RU, GF_SECURITY_ALLOW_EMBEDDING: "true",
+      GF_SECURITY_CONTENT_SECURITY_POLICY: "true", GF_RBAC_PERMISSION_CACHE: "false",
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/ulsatracker.json,
+      GF_ANALYTICS_REPORTING_ENABLED: "false", GF_ANALYTICS_CHECK_FOR_UPDATES: "false",
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false", GF_PLUGINS_PUBLIC_KEY_RETRIEVAL_DISABLED: "true",
+      GF_PLUGINS_PREINSTALL_DISABLED: "true", GF_LOG_LEVEL: warn}
     volumes:
       - grafanadata:/var/lib/grafana
       - grafanaplugins4112:/var/lib/grafana/plugins:ro
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/lab5-dashboard.json:/etc/grafana/provisioning/dashboards/ulsatracker.json:ro
     depends_on:
       app:
         condition: service_healthy
       db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/grafana/api/health >/dev/null"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-      start_period: 15s
+    healthcheck: {test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/grafana/api/health >/dev/null"],
+      interval: 5s, timeout: 3s, retries: 30, start_period: 15s}
     mem_limit: 384m
     cpus: 1
 
-volumes:
-  appdata:
-  grafanadata:
-  grafanaplugins4112:
-  dbdata:
+  frontend:
+    image: semiys/ulsatrackerstyle-frontend:0.0.5
+    ports: ["8080:8080"]
+    environment: {API_UPSTREAM: "http://app:8080", PUBLIC_URL: "http://localhost:8080"}
+    depends_on:
+      app: {condition: service_healthy}
+    healthcheck: {test: ["CMD", "node", "-e", "fetch('http://localhost:8080/frontend-health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"],
+      interval: 5s, timeout: 3s, retries: 20}
+    mem_limit: 96m
+    cpus: 0.5
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  prometheus:
+    image: prom/prometheus:v3.13.5
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d", "--storage.tsdb.retention.size=256MB"]
+    ports: ["9090:9090"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    mem_limit: 256m
+    cpus: 0.5
+    healthcheck: {test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9090/-/ready"],
+      interval: 5s, timeout: 3s, retries: 20}
+
+volumes: {prometheusdata: {}, appdata: {}, grafanadata: {}, grafanaplugins4112: {}, dbdata: {}}

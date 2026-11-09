@@ -3,6 +3,7 @@ import { SERVER_VERSION } from './version.js';
 
 const routes = [
   /^\/(?:health|login|register|logout|dashboard|guide|events\/new|error)$/,
+  /^\/api\/demo\/(?:form|events|statistics|recent|refusal-example|state)$/,
   /^\/api\/v1\/(?:events|stats|events\/recent)$/,
   /^\/console(?:\/projects)?$/,
 ];
