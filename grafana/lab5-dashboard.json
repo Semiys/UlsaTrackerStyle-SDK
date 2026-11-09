@@ -31,19 +31,19 @@
     {
       "title": "Главная сервиса",
       "type": "link",
-      "url": "/",
+      "url": "../",
       "targetBlank": true
     },
     {
       "title": "Отправить событие",
       "type": "link",
-      "url": "/events/new",
+      "url": "../events/new",
       "targetBlank": true
     },
     {
       "title": "Состояние системы",
       "type": "link",
-      "url": "/system-state",
+      "url": "../system-state",
       "targetBlank": true
     }
   ],
