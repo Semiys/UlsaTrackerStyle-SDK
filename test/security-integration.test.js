@@ -29,9 +29,11 @@ test('database row policies survive unrestricted SQL, owner spoofing, external t
     const response = await a.request('/grafana/api/ds/query?orgId=99999', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Grafana-Org-Id': '99999', Authorization: 'Basic ' + Buffer.from('app:app').toString('base64') }, body: JSON.stringify({ from: String(Date.now()-3600000), to: String(Date.now()), queries: [{ refId: 'A', datasource: { uid: 'owner-events', type: 'grafana-clickhouse-datasource' }, rawSql, queryType: 'sql', format: 1 }] }) });
     const body = await response.json(); return body.results?.A ?? body;
   }
-  const rows = await query('SELECT project_id FROM app.events FINAL');
-  assert.equal(rows.error, undefined, JSON.stringify(rows));
-  assert.deepEqual(rows.frames[0].data.values[0], [idA]);
+  for (const table of ['events', 'ingestion_receipts']) {
+    const rows = await query('SELECT project_id FROM app.' + table + ' FINAL');
+    assert.equal(rows.error, undefined, JSON.stringify(rows));
+    assert.deepEqual(rows.frames[0].data.values[0], [idA]);
+  }
   for (const sql of [
     'DROP TABLE app.events',
     "SELECT * FROM url('http://app:8080/health', 'JSONEachRow', 'status String')",

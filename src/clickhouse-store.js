@@ -64,6 +64,17 @@ export class ClickHouseAnalyticsStore {
           clickhouse_settings: { async_insert: 0, input_format_parallel_parsing: 0, max_insert_block_size: 100 },
         });
       }
+      // The two ClickHouse tables are not one transaction. On failure no ACK is
+      // sent; a retry repairs a missing receipt for the already persisted event.
+      await this.client.command({ query: `INSERT INTO ingestion_receipts
+          (project_id, event_id, event_name, observed_at, status)
+        SELECT project_id, event_id, name, received_at, 'stored' FROM events FINAL
+        WHERE project_id = {project:String} AND event_id IN {ids:Array(UUID)}
+          AND event_id NOT IN (SELECT event_id FROM ingestion_receipts FINAL
+            WHERE project_id = {project:String} AND event_id IN {ids:Array(UUID)})`,
+        query_params: { project: projectId, ids: unique.map(event => event.eventId) },
+        clickhouse_settings: { async_insert: 0, max_threads: 2, max_execution_time: 8 },
+      });
       return { accepted: fresh.length, duplicates: events.length - fresh.length,
         acknowledgedEventIds: unique.map(event => event.eventId) };
     });
@@ -71,10 +82,30 @@ export class ClickHouseAnalyticsStore {
 
   deleteProjectEvents(projectId) {
     // Queue after already accepted writes and wait until deletion is visible.
-    return this.execute(() => this.client.command({
-      query: 'ALTER TABLE events DELETE WHERE project_id = {project:String}',
-      query_params: { project: projectId }, clickhouse_settings: { mutations_sync: 2 },
-    }));
+    return this.execute(async () => {
+      for (const table of ['events', 'ingestion_receipts']) await this.client.command({
+        query: `ALTER TABLE ${table} DELETE WHERE project_id = {project:String}`,
+        query_params: { project: projectId }, clickhouse_settings: { mutations_sync: 2 },
+      });
+    });
+  }
+
+  operationalState(projectId) {
+    return this.execute(async () => {
+      const params = { project: projectId };
+      const probe = async query => {
+        const result = await this.client.query({ query, query_params: params, format: 'JSONEachRow',
+          abort_signal: AbortSignal.timeout(2500),
+          clickhouse_settings: { max_execution_time: 2, max_threads: 2, max_memory_usage: 67108864 } });
+        return result.json();
+      };
+      const [count] = await probe('SELECT count() AS total FROM ingestion_receipts FINAL WHERE project_id = {project:String}');
+      const [last] = await probe(`SELECT toString(event_id) AS eventId, event_name AS eventName,
+        toUnixTimestamp64Milli(observed_at) AS observedMs, status FROM ingestion_receipts FINAL
+        WHERE project_id = {project:String} ORDER BY observed_at DESC, event_id DESC LIMIT 1`);
+      return { total: integer(count.total), lastEvent: last ? { eventId: last.eventId, eventName: last.eventName,
+        observedAt: new Date(Number(last.observedMs)).toISOString(), status: last.status } : null };
+    });
   }
 
   exportRows(projectId, { kind, from, to }) {

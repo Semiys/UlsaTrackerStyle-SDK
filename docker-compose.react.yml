@@ -1,22 +1,22 @@
 # Current React cabinet; historical releases remain in their source tags.
 services:
   app:
-    image: ulsatrackerstyle-sdk:0.11.2
+    image: ulsatrackerstyle-sdk:0.12.0
     ports: !override []
     environment:
       FRONTEND_INTERNAL_URL: http://frontend:8080
       REVERSE_PROXY_HOPS: "1"
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
       DASHBOARD_PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
-      LAB_IMAGE_VERSION: 0.11.2
+      LAB_IMAGE_VERSION: 0.12.0
   dashboard:
     environment:
       GF_SERVER_ROOT_URL: ${PUBLIC_URL:-http://localhost:8080}/grafana/
   prometheus:
     labels:
-      io.ulsatracker.rules-revision: "0.11.2"
+      io.ulsatracker.rules-revision: "0.12.0"
   frontend:
-    image: ulsatrackerstyle-frontend:0.11.2
+    image: ulsatrackerstyle-frontend:0.12.0
     build: {context: ., dockerfile: frontend/Dockerfile}
     pull_policy: never
     ports: ["${FRONTEND_BIND:-127.0.0.1}:${FRONTEND_PORT:-8080}:8080"]

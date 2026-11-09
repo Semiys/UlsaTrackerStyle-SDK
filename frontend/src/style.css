@@ -57,3 +57,7 @@ body.dashboard-page { padding:0; }
 .button.danger:hover:not(:disabled) { filter:brightness(.9); }
 .button.danger:disabled { opacity:.5; cursor:not-allowed; }
 .application-identifier { overflow-wrap:anywhere; }
+
+.demo-navigation { margin: 12px 0 28px; }
+.demo-navigation [aria-current="page"] { box-shadow: inset 0 -3px var(--accent); }
+@media(max-width:650px) { .demo-navigation { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; } .demo-navigation .button { min-width:0; } }
