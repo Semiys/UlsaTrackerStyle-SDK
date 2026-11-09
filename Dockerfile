@@ -9,6 +9,7 @@ RUN npm ci --omit=dev --no-audit --no-fund
 
 FROM dependencies AS test
 COPY frontend/server.mjs ./frontend/server.mjs
+COPY scripts/recovery.mjs scripts/recovery-volume.mjs ./scripts/
 COPY src ./src
 COPY test ./test
 COPY public ./public
@@ -102,6 +103,7 @@ RUN npm ci --omit=dev --omit=optional --no-audit --no-fund
 
 FROM monitoring-dependencies AS monitoring-test
 COPY frontend/server.mjs ./frontend/server.mjs
+COPY scripts/recovery.mjs scripts/recovery-volume.mjs ./scripts/
 COPY src ./src
 COPY test ./test
 COPY public ./public

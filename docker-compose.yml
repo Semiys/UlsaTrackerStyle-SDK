@@ -38,6 +38,7 @@ services:
     cpus: 1
   db:
     image: clickhouse/clickhouse-server:26.8.26.12
+    stop_grace_period: 60s
     environment:
       CLICKHOUSE_DB: app
       CLICKHOUSE_USER: app
