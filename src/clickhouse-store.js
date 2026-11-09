@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createClient } from '@clickhouse/client';
 import { ApiError } from './errors.js';
+import { CSV_ROW_LIMIT, CSV_BYTE_LIMIT } from './analytics-export.js';
 
 const integer = value => {
   const result = Number(value);
@@ -65,6 +66,46 @@ export class ClickHouseAnalyticsStore {
       }
       return { accepted: fresh.length, duplicates: events.length - fresh.length,
         acknowledgedEventIds: unique.map(event => event.eventId) };
+    });
+  }
+
+  deleteProjectEvents(projectId) {
+    // Queue after already accepted writes and wait until deletion is visible.
+    return this.execute(() => this.client.command({
+      query: 'ALTER TABLE events DELETE WHERE project_id = {project:String}',
+      query_params: { project: projectId }, clickhouse_settings: { mutations_sync: 2 },
+    }));
+  }
+
+  exportRows(projectId, { kind, from, to }) {
+    return this.execute(async () => {
+      const parameters = { project: projectId, to, limit: CSV_ROW_LIMIT + 1, ...(from !== null ? { from } : {}) };
+      const filter = `WHERE project_id = {project:String} AND occurred_at <= fromUnixTimestamp64Milli({to:Int64})
+        ${from !== null ? 'AND occurred_at >= fromUnixTimestamp64Milli({from:Int64})' : ''}`;
+      const query = kind === 'summary' ? `SELECT name AS eventType, ifNull(screen, '') AS screen,
+        if(name = 'button_click', JSONExtractString(properties, 'button'), '') AS button,
+        if(name = 'action_success', JSONExtractString(properties, 'action'), '') AS action,
+        platform, app_version AS appVersion, count() AS eventCount, uniqExact(session_id) AS sessionCount
+        FROM events FINAL ${filter} GROUP BY name, screen, button, action, platform, app_version
+        ORDER BY eventCount DESC, name, screen, button, action, platform, app_version LIMIT {limit:UInt32}`
+        : `SELECT toString(event_id) AS eventId, toString(session_id) AS sessionId, name AS eventType,
+          ifNull(screen, '') AS screen, platform, app_version AS appVersion,
+          toUnixTimestamp64Milli(occurred_at) AS occurredMs, toUnixTimestamp64Milli(received_at) AS receivedMs, properties
+          FROM events FINAL ${filter} ORDER BY occurred_at, event_id LIMIT {limit:UInt32}`;
+      const result = await this.client.query({ query, query_params: parameters, format: 'JSONEachRow',
+        clickhouse_settings: { max_threads: 2, max_execution_time: 8, max_memory_usage: 134217728,
+          max_result_bytes: CSV_BYTE_LIMIT, result_overflow_mode: 'throw' } });
+      const rows = await result.json();
+      if (rows.length > CSV_ROW_LIMIT) throw new ApiError(413, 'export_too_many_rows', 'В выгрузке больше 10 000 записей. Выберите более короткий период. Файл не обрезан.');
+      return kind === 'summary' ? rows.map(row => ({ ...row, eventCount: integer(row.eventCount), sessionCount: integer(row.sessionCount) })) : rows;
+    });
+  }
+
+  firstEventAt(projectId) {
+    return this.execute(async () => {
+      const [row] = await this.rows(`SELECT count() AS count, toUnixTimestamp64Milli(min(occurred_at)) AS first
+        FROM events WHERE project_id = {project:String} AND occurred_at <= now64(3, 'UTC')`, { project: projectId });
+      return Number(row.count) ? Number(row.first) : null;
     });
   }
 

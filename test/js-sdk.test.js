@@ -55,3 +55,44 @@ test('revoked key pauses delivery, bounded queue drops oldest and insecure endpo
   assert.equal(tracker.getStatus().queued, 2); assert.equal(tracker.getStatus().dropped, 1);
   await tracker.flush(); assert.equal(tracker.getStatus().paused, 'unauthorized');
 });
+
+test('an unindexed rejection isolates bad events without discarding healthy neighbours', async t => {
+  for (const field of [undefined, 'events[999].name']) {
+    const acknowledged = [], packets = [];
+    let first = true;
+    const tracker = createTracker({ ...options, fetch: async (_, init) => {
+      const events = JSON.parse(init.body).events; packets.push(events);
+      if (first) { first = false; return new Response(JSON.stringify({ error: { code: 'event_id_conflict', ...(field ? { field } : {}) } }), { status: 409 }); }
+      if (events.some(event => event.name === 'bad_record')) return new Response('{"error":{"code":"invalid_event"}}', { status: 400 });
+      acknowledged.push(...events.map(event => event.eventId)); return ack(events);
+    } });
+    t.after(() => tracker.close());
+    tracker.screen('home'); tracker.track('bad_record'); tracker.click('save', 'home');
+    await tracker.flush();
+    assert.equal(tracker.getStatus().queued, 3, 'Unknown offending index must retain the entire packet for isolation');
+    assert.equal(tracker.getStatus().rejected, 0);
+    for (let i = 0; i < 3; i++) await tracker.flush();
+    assert.equal(tracker.getStatus().queued, 0);
+    assert.equal(tracker.getStatus().rejected, 1);
+    assert.deepEqual(acknowledged, [packets[0][0].eventId, packets[0][2].eventId]);
+    assert.ok(packets.slice(1).every(packet => packet.length === 1));
+    tracker.close();
+  }
+});
+
+test('an indexed rejection removes only the named event and retains other event IDs', async t => {
+  let first = true, original, delivered;
+  const tracker = createTracker({ ...options, fetch: async (_, init) => {
+    const events = JSON.parse(init.body).events;
+    if (first) { first = false; original = events; return new Response('{"error":{"field":"events[1].properties"}}', { status: 400 }); }
+    delivered = events; return ack(events);
+  } });
+  t.after(() => tracker.close());
+  tracker.screen('home'); tracker.track('bad_record'); tracker.click('save', 'home');
+  await tracker.flush();
+  assert.equal(tracker.getStatus().queued, 2);
+  assert.equal(tracker.getStatus().rejected, 1);
+  await tracker.flush();
+  assert.deepEqual(delivered.map(event => event.eventId), [original[0].eventId, original[2].eventId]);
+  assert.equal(tracker.getStatus().queued, 0);
+});

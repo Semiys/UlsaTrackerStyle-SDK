@@ -21,6 +21,7 @@ test('two owners receive isolated Grafana organizations and database readers; sp
     return { id: html.match(/\/console\/apps\/(a_[a-f0-9]{32})/)[1], key: html.match(/ulsa_[a-f0-9]{64}/)[0], path };
   }
   const appA = await application(a, csrfA, 'Website A'), appB = await application(b, csrfB, 'Website B');
+  assert.deepEqual(await (await a.request(`/console/apps/${appA.id}/range`)).json(), { firstEventAt: null });
   const ingest = (app, body = packet()) => fetch(base + '/api/v1/events', { method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + app.key }, body: JSON.stringify(body) });
   assert.equal((await ingest(appA)).status, 200); assert.equal((await ingest(appB)).status, 200);
@@ -28,9 +29,15 @@ test('two owners receive isolated Grafana organizations and database readers; sp
     const response = await client.request('/grafana/api/dashboards/uid/' + app.id);
     const body = await response.text(); assert.equal(response.status, 200, body);
     const data = JSON.parse(body); assert.equal(data.dashboard.uid, app.id); assert.equal(data.meta.canSave, false);
+    assert.deepEqual(data.dashboard.links.map(link => link.url), ['/console', '/console/apps/' + app.id]);
     assert.equal((await client.request(`/console/apps/${app.id}/data`)).status, 200);
+    const boundary = await client.request(`/console/apps/${app.id}/range`);
+    assert.equal(boundary.headers.get('cache-control'), 'private, no-store');
+    assert.ok(Number.isSafeInteger((await boundary.json()).firstEventAt));
   }
   assert.equal((await a.request(`/console/apps/${appB.id}/stats`)).status, 404);
+  assert.equal((await a.request(`/console/apps/${appB.id}/range`)).status, 404);
+  assert.equal((await fetch(base + `/console/apps/${appA.id}/range`, { redirect: 'manual' })).status, 303);
   assert.equal((await a.request('/grafana/api/dashboards/uid/' + appB.id)).status, 404);
   assert.equal((await a.request('/grafana/api/prometheus/grafana/api/v1/rules')).status, 200);
   const target = appId => ({ from: String(Date.now() - 86400000), to: String(Date.now() + 60000), queries: [{ refId: 'A',

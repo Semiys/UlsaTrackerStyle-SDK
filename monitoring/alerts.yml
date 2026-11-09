@@ -1,0 +1,28 @@
+groups:
+  - name: ulsa-service
+    rules:
+      - alert: UlsaApiDown
+        expr: up{job="ulsa-api"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "API metrics endpoint is unavailable"}
+      - alert: UlsaStorageUnavailable
+        expr: ulsa_storage_available{job="ulsa-api"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "Storage read probe failed"}
+      - alert: UlsaHighServerErrorRate
+        expr: sum(rate(ulsa_http_requests_total{status_code=~"5..",route!="/health"}[5m])) / clamp_min(sum(rate(ulsa_http_requests_total{route!="/health"}[5m])), 0.01) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "More than 5 percent of requests fail with server errors"}
+      - alert: UlsaDashboardUnavailable
+        expr: ulsa_grafana_available == 0
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: "Product dashboard health probe failed"}
+      - alert: UlsaFrontendUnavailable
+        expr: ulsa_frontend_available == 0
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: "React frontend health probe failed"}

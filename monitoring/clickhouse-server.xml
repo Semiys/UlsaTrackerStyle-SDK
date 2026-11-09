@@ -1,0 +1,29 @@
+<clickhouse>
+  <!-- Local Compose uses a 1 GiB database container. In particular,
+       system.metric_log has over 2,000 columns in ClickHouse 26.8;
+       its default 8,192-row merge blocks can exhaust this budget. -->
+  <merge_tree>
+    <merge_max_block_size>512</merge_max_block_size>
+    <merge_max_block_size_bytes>1048576</merge_max_block_size_bytes>
+    <vertical_merge_algorithm_min_rows_to_activate>1</vertical_merge_algorithm_min_rows_to_activate>
+  </merge_tree>
+  <!-- Keep internal metrics available, at a resolution suited to this stack.
+       This does not change ingestion or retention of application events. -->
+  <metric_log>
+    <collect_interval_milliseconds>10000</collect_interval_milliseconds>
+    <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+    <reserved_size_rows>16</reserved_size_rows>
+    <max_size_rows>1024</max_size_rows>
+    <buffer_size_rows_flush_threshold>512</buffer_size_rows_flush_threshold>
+  </metric_log>
+  <prometheus>
+    <port>9363</port>
+    <endpoint>/metrics</endpoint>
+    <metrics>true</metrics>
+    <asynchronous_metrics>true</asynchronous_metrics>
+    <events>true</events>
+    <errors>true</errors>
+    <histograms>false</histograms>
+    <dimensional_metrics>false</dimensional_metrics>
+  </prometheus>
+</clickhouse>

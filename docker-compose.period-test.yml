@@ -1,0 +1,17 @@
+# Isolated panel checks; combine with docker-compose.yml and docker-compose.lab4-test.yml.
+services:
+  app:
+    image: ulsatrackerstyle-sdk:dev
+    build:
+      context: .
+      target: runtime
+    pull_policy: never
+  checks:
+    image: ulsatrackerstyle-sdk:dev
+    build: !reset null
+    pull_policy: never
+    entrypoint: ["node"]
+    command: ["--test", "--test-concurrency=1", "test/grafana.test.js", "test/grafana-periods.test.js", "test/grafana-short-period.test.js", "test/dashboard-controls.test.js", "test/date-range.test.js", "test/timezone.test.js", "test/grafana-timezone.test.js", "test/grafana-flow.test.js"]
+    volumes:
+      - ./test:/app/test:ro
+      - ./sdk/js:/app/sdk/js:ro

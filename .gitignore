@@ -5,6 +5,7 @@ coverage/
 dist/
 
 # Local configuration and secrets
+.monitoring-secrets/
 .env
 .env.*
 !.env.example
@@ -35,3 +36,6 @@ Thumbs.db
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+frontend/node_modules/
+frontend/dist/
