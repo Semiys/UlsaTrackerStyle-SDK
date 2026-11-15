@@ -17,3 +17,13 @@ CREATE TABLE IF NOT EXISTS events (
     payload_hash FixedString(64)
 ) ENGINE = ReplacingMergeTree
 ORDER BY (project_id, event_id);
+
+
+CREATE TABLE IF NOT EXISTS ingestion_receipts (
+    project_id String,
+    event_id UUID,
+    event_name LowCardinality(String),
+    observed_at DateTime64(3, 'UTC'),
+    status LowCardinality(String)
+) ENGINE = ReplacingMergeTree
+ORDER BY (project_id, event_id);

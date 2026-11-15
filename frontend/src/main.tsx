@@ -5,6 +5,7 @@ import { request, RequestError } from './api';
 import { CopyCode, Form, Notice, Select } from './components';
 import type { ApplicationData, Application, Project, Session } from './types';
 import { Statistics } from './statistics';
+import { DemoFrame, DemoEventForm, DemoRefusal, DemoState, DemoSdk } from './demo';
 import '../../public/styles.css';
 import '../../public/dashboard.css';
 import '../../public/pages.css';
@@ -16,17 +17,17 @@ import './style.css';
 type Context = { session: Session; refresh: () => Promise<void>; post: <T>(path: string, body: object) => Promise<T> };
 const SessionContext = createContext<Context | null>(null);
 export const useSession = () => useContext(SessionContext)!;
-export function useResource<T>(path: string) {
+export function useResource<T>(path: string, scope: 'console' | 'demo' = 'console') {
   const sessionContext = useContext(SessionContext);
   const [state, setState] = useState<{ data?: T; error?: string }>({});
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     const abort = new AbortController(); setState({});
-    request<T>(path, { signal: abort.signal }).then(data => setState({ data })).catch(e => {
+    request<T>(path, { signal: abort.signal, scope }).then(data => setState({ data })).catch(e => {
       if (!abort.signal.aborted) { setState({ error: e.message }); if (e instanceof RequestError && e.code === 'session_required') void sessionContext?.refresh(); }
     });
     return () => abort.abort();
-  }, [path, revision]);
+  }, [path, revision, scope]);
   return { ...state, retry: () => setRevision(v => v + 1) };
 }
 function Resource({ error, retry }: { error?: string; retry: () => void }) {
@@ -59,11 +60,11 @@ function Layout() {
     <nav className="page-nav" aria-label="Основная навигация">
       <NavLink className="button secondary" to="/" end>Главная</NavLink>
       <NavLink className="button secondary" to="/guide">Подключение SDK</NavLink>
-      {session.demoMode && !session.user && <a className="button secondary" href="/dashboard">Демонстрация</a>}
+      {session.demoMode && !session.user && <NavLink className="button secondary" to="/dashboard">Демонстрация</NavLink>}
       <NavLink className="button secondary" to={session.user ? '/console' : '/login'}>{session.user ? 'Мой кабинет' : 'Войти'}</NavLink>
     </nav><Theme />
   </header><main ref={content} id="content" tabIndex={-1} className="dashboard-main react-main"><Outlet /></main>
-  <footer className="muted small app-footer">UlsaTrackerStyle SDK · Версия {session.version}</footer></div>;
+  <footer className="muted small app-footer">UlsaTrackerStyle SDK · Версия {session.version}{session.demoMode && session.labImageVersion && <> · Сборка {session.labImageVersion}</>}</footer></div>;
 }
 function Protected() {
   const { session } = useSession(), location = useLocation();
@@ -145,7 +146,7 @@ function ApplicationPage() {
     <div className="console-heading"><div><p className="eyebrow">{a.platform.toUpperCase()}</p><h1>{a.name}</h1><p className="muted">{a.identifier}</p></div>{!a.deleting && <Link className="button" to={'/console/apps/' + a.id + '/stats'}>Открыть статистику</Link>}</div>
     {a.deleting && <Notice error>Удаление не завершено. Приём событий остановлен. Повторите удаление ниже.</Notice>}
     {!a.deleting && <>{rawKey && <section className="console-empty"><h2>Сохраните ключ отправки</h2><p className="muted">Он показывается один раз. После закрытия страницы восстановить полный ключ нельзя.</p><CopyCode value={rawKey} label="Ключ отправки" /><button className="button secondary" onClick={() => setRawKey('')}>Я сохранил ключ</button></section>}
-    <section className="console-section"><h2>Подключение</h2><p>Адрес сервиса: <code>{session.endpoint}</code></p><div className="page-actions"><Link className="button secondary" to={'/guide#' + (a.platform === 'android' ? 'android' : a.platform === 'web' ? 'javascript' : 'project')}>Пошаговая инструкция</Link>{a.platform === 'web' && <a className="button secondary" href="/sdk-demo">Проверить JavaScript SDK</a>}</div>
+    <section className="console-section"><h2>Подключение</h2><p>Адрес сервиса: <code>{session.endpoint}</code></p><div className="page-actions"><Link className="button secondary" to={'/guide#' + (a.platform === 'android' ? 'android' : a.platform === 'web' ? 'javascript' : 'project')}>Пошаговая инструкция</Link>{a.platform === 'web' && <Link className="button secondary" to="/sdk-demo">Проверить JavaScript SDK</Link>}</div>
       {a.platform === 'ios' ? <p className="muted">Готового iOS-адаптера SDK пока нет. Доступен контракт HTTP API v1.</p> : <ApplicationExample a={a} rawKey={rawKey} endpoint={session.endpoint} />}
     </section>
     <section className="console-section"><h2>Ключи отправки</h2><p className="muted">Отзыв или замена останавливает приём по старому ключу. Перед заменой подготовьте обновление клиентов.</p>
@@ -213,7 +214,7 @@ function Guide() {
   const { session } = useSession(), data = useResource<{ endpoint: string; examples: Record<string,string> }>('/guide');
   if (!data.data) return <Resource {...data} />;
   const ex = data.data.examples;
-  return <div className="guide-main"><section className="guide-intro"><p className="eyebrow">Первое подключение</p><h1>Создайте проект и подключите SDK</h1><p className="description">Выберите Android или JavaScript. Проект, приложение и ключ создаются одинаково.</p><div className="page-actions"><Link className="button" to={session.user ? '/console' : '/register'}>{session.user ? 'Открыть проекты' : 'Создать аккаунт'}</Link><a className="button secondary" href="#android">Подключить Android</a><a className="button secondary" href="#javascript">Подключить сайт</a></div><p className="muted small">Kotlin SDK 0.2.0 · JavaScript SDK 0.1.0 · iOS-адаптера пока нет.</p></section>
+  return <div className="guide-main"><section className="guide-intro"><p className="eyebrow">Первое подключение</p><h1>Создайте проект и подключите SDK</h1><p className="description">Выберите Android или JavaScript. Проект, приложение и ключ создаются одинаково.</p><div className="page-actions"><Link className="button" to={session.user ? '/console' : '/register'}>{session.user ? 'Открыть проекты' : 'Создать аккаунт'}</Link><a className="button secondary" href="#android">Подключить Android</a><a className="button secondary" href="#javascript">Подключить сайт</a></div><p className="muted small">Kotlin SDK 0.2.0 · JavaScript SDK 0.1.1 · iOS-адаптера пока нет.</p></section>
     <div className="guide-layout"><nav className="guide-toc" aria-label="Содержание инструкции"><a href="#project">Проект и приложение</a><a href="#key">Ключ отправки</a><a href="#address">Адрес сервера</a><a href="#android">Android</a><a href="#javascript">JavaScript</a><a href="#verify">Первое событие</a><a href="#event-types">Какие события отправлять</a><a href="#troubleshooting">Если не получилось</a></nav><div className="guide-content">
       <section className="guide-section" id="project"><h2>1. Создайте проект и приложение</h2><ol className="guide-steps"><li>Войдите в кабинет и создайте проект.</li><li>Откройте проект и добавьте приложение.</li><li>Выберите Android с package name или Web с точным origin сайта, включая протокол и порт.</li></ol></section>
       <section className="guide-section" id="key"><h2>2. Сохраните ключ отправки</h2><p>Полный ключ показывается один раз. Он разрешает отправку в своё приложение, но не вход в кабинет и не чтение статистики. Не публикуйте ключи и не храните пароли в репозитории.</p></section>
@@ -222,7 +223,7 @@ function Guide() {
         {[['clone','Скачайте исходники'],['settings','settings.gradle.kts'],['dependency','build.gradle.kts модуля'],['application','AnalyticsApplication.kt'],['manifest','AndroidManifest.xml'],...(session.endpoint.startsWith('http:') ? [['debugManifest','src/debug/AndroidManifest.xml · только локальный HTTP']] : []),['compose','HomeScreen.kt · Compose'],['activity','ComponentActivity · onCreate']].map(([key,label]) => <CopyCode key={key} value={ex[key]} label={label} />)}
         <p>Если у приложения уже есть Application, перенесите инициализацию туда. Второй tracker и второй элемент application создавать не нужно. Для ранее подготовленного адаптера можно заполнить параметры ниже и пересобрать APK:</p><CopyCode value={ex.prepared} label="local.properties · только для подготовленного адаптера" />
       </section>
-      <section className="guide-section" id="javascript"><h2>5. Подключите сайт</h2><p>Origin Web-приложения должен точно совпадать с origin страницы. Подключите SDK и отдельный файл своего кода.</p><CopyCode value={ex.html} label="HTML-страница" /><CopyCode value={ex.javascript} label="analytics.js" /><details className="guide-details"><summary>Подключение через ES module</summary><CopyCode value={ex.module} label="JavaScript module" /><p>Этот вариант заменяет обычный скрипт. Публичного пакета в npm пока нет.</p></details><p className="muted small">CSP сайта должна разрешать SDK и запросы к серверу. Автоматического сбора всех кликов и содержимого форм нет.</p><a className="button secondary" href="/sdk-demo">Проверить JavaScript SDK</a></section>
+      <section className="guide-section" id="javascript"><h2>5. Подключите сайт</h2><p>Origin Web-приложения должен точно совпадать с origin страницы. Подключите SDK и отдельный файл своего кода.</p><CopyCode value={ex.html} label="HTML-страница" /><CopyCode value={ex.javascript} label="analytics.js" /><details className="guide-details"><summary>Подключение через ES module</summary><CopyCode value={ex.module} label="JavaScript module" /><p>Этот вариант заменяет обычный скрипт. Публичного пакета в npm пока нет.</p></details><p className="muted small">CSP сайта должна разрешать SDK и запросы к серверу. Автоматического сбора всех кликов и содержимого форм нет.</p><Link className="button secondary" to="/sdk-demo">Проверить JavaScript SDK</Link></section>
       <section className="guide-section" id="verify"><h2>6. Найдите первое событие</h2><ol className="guide-steps"><li>Запустите своё приложение или сайт.</li><li>Откройте экран и один раз нажмите отмеченную кнопку.</li><li>В кабинете откройте статистику нужного приложения.</li><li>Подождите до минуты с учётом пакетной отправки и обновления панели. Проверьте названия и время в последних событиях.</li></ol><p>Открытие экрана — screen_view, нажатие — button_click. Два события в этом примере ожидаемы. Сессия не равна уникальному человеку.</p></section>
       <section className="guide-section" id="event-types"><h2>Нажатие и успешное действие</h2><p>button_click вызывается при нажатии, action_success — после подтверждённого результата. Ошибка формы не должна считаться успешным сохранением.</p><CopyCode value={ex.successAndroid} label="Kotlin · после успешного действия" /><CopyCode value={ex.successWeb} label="JavaScript · после успешного действия" /></section>
       <section className="guide-section" id="troubleshooting"><h2>Если событие не появилось</h2><details className="guide-details"><summary>Телефон не видит сервер</summary><p>Проверьте /health с телефона, IP, изоляцию Wi-Fi и правила брандмауэра. После переподключения USB повторите adb reverse.</p></details><details className="guide-details"><summary>Сеть работает, но событий нет</summary><p>Проверьте полный ключ, платформу, выбранное приложение и включён ли сбор в этой сборке APK. После смены настроек пересоберите APK. После офлайна дождитесь повторной отправки.</p></details><details className="guide-details"><summary>Событий больше, чем нажатий</summary><p>Счётчик включает открытия экранов и другие события. Также могли прийти ранее накопленные события. Проверьте время и тип в журнале, единственный экземпляр tracker и отсутствие двойных вызовов.</p></details></section>
@@ -239,6 +240,8 @@ function Root() {
   };
   return <SessionContext.Provider value={{ session, refresh, post }}><Routes><Route element={<Layout />}>
     <Route index element={<Home />} /><Route path="login" element={<Auth mode="login" />} /><Route path="register" element={<Auth mode="register" />} /><Route path="guide" element={<Guide />} />
+    <Route element={<DemoFrame />}><Route path="events/new" element={<DemoEventForm />} /><Route path="dashboard" element={<Statistics demo />} /><Route path="error" element={<DemoRefusal />} /><Route path="system-state" element={<DemoState />} /></Route>
+    <Route path="sdk-demo" element={<DemoSdk />} />
     <Route element={<Protected />}><Route path="console" element={<Projects />} /><Route path="console/projects/:projectId" element={<ProjectPage />} /><Route path="console/apps/:appId" element={<ApplicationRoute />} /><Route path="console/apps/:appId/test" element={<TestEvent />} /><Route path="console/apps/:appId/stats" element={<Statistics />} /></Route>
     <Route path="*" element={<section className="console-main"><h1>Страница не найдена</h1><Link className="button" to="/console">Открыть проекты</Link></section>} />
   </Route></Routes></SessionContext.Provider>;

@@ -21,8 +21,8 @@
       <networks><ip>::/0</ip></networks>
       <profile>grafana_readonly</profile>
       <quota>default</quota>
-      <grants><query>GRANT SELECT ON app.events</query></grants>
-      <databases><app><events><filter>project_id = 'lab3-demo'</filter></events></app></databases>
+      <grants><query>GRANT SELECT ON app.events</query><query>GRANT SELECT ON app.ingestion_receipts</query></grants>
+      <databases><app><events><filter>project_id = 'lab3-demo'</filter></events><ingestion_receipts><filter>project_id = 'lab3-demo'</filter></ingestion_receipts></app></databases>
     </grafana_reader>
   </users>
 </clickhouse>

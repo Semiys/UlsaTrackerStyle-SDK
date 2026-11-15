@@ -7,11 +7,34 @@ import { fileURLToPath } from 'node:url';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const docker=process.env.DOCKER_BIN||'docker';
-const composeFiles=['docker-compose.yml','docker-compose.monitoring.yml','docker-compose.react.yml'];
 const helperTag='node:24.22.2-bookworm-slim';
-const requiredServices=['app','db','dashboard','frontend','prometheus','monitoring-dashboard'];
 const volumeTool=resolve(root,'scripts/recovery-volume.mjs');
-const roles=['appdata','dbdata','product_grafana_13','prometheusdata','operatordata'];
+const profiles={
+  'monitoring-react':{
+    composeFiles:['docker-compose.yml','docker-compose.monitoring.yml','docker-compose.react.yml'],
+    services:['app','db','dashboard','frontend','prometheus','monitoring-dashboard'],
+    roles:['appdata','dbdata','product_grafana_13','prometheusdata','operatordata'],
+    configPaths:['grafana','monitoring','.monitoring-secrets'],
+  },
+  lab5:{
+    composeFiles:['docker-compose.yml'],
+    services:['app','db','dashboard','frontend','prometheus'],
+    roles:['appdata','dbdata','grafanadata','prometheusdata'],
+    configPaths:['grafana','prometheus'],
+  },
+};
+// Missing profile identifies backups made by tool 0.1.0, which only supported monitoring.
+function manifestProfile(manifest) {
+  const name=manifest.profile??'monitoring-react';
+  if(typeof name!=='string'||!Object.hasOwn(profiles,name))throw new Error('Unsupported backup profile');
+  return {name,...profiles[name]};
+}
+export function sourceProfile(containers) {
+  const names=containers.map(c=>c.Config?.Labels?.['com.docker.compose.service']);
+  const name=Object.keys(profiles).find(key=>names.length===profiles[key].services.length&&profiles[key].services.every(s=>names.filter(n=>n===s).length===1));
+  if(!name)throw new Error('Unsupported source service profile; expected lab5 or monitoring-react');
+  return {name,...profiles[name]};
+}
 export function projectName(value) {
   if(typeof value!=='string'||!/^([a-z][a-z0-9_-]{0,47})$/.test(value))throw new Error('Use a lowercase Docker project name, up to 48 characters');
   return value;
@@ -56,14 +79,14 @@ function assertStopped(containers) {
   if(containers.some(c=>c.State.Running))throw new Error('Backup requires all source containers to be stopped; source was not changed');
 }
 function containerStamp(containers) {return JSON.stringify(containers.map(c=>[c.Id,c.State.StartedAt,c.State.FinishedAt]).sort());}
-const composeArgs=(project,directory,override=false)=>['compose','-p',project,...composeFiles.flatMap(f=>['-f',resolve(directory,f)]),...(override?['-f',resolve(directory,'recovery.override.yml')]:[])];
+const composeArgs=(project,directory,profile,override=false)=>['compose','-p',project,...profile.composeFiles.flatMap(f=>['-f',resolve(directory,f)]),...(override?['-f',resolve(directory,'recovery.override.yml')]:[])];
 function helper(image,{volume,backup,writeVolume=false,writeBackup=false,command}) {
   return json(['run','--rm','--network','none','--memory','256m','--cpus','1','--pids-limit','64','--read-only','--cap-drop=ALL','--cap-add=CHOWN','--cap-add=FOWNER','--cap-add=DAC_OVERRIDE','--security-opt=no-new-privileges:true',
     ...(volume?['--mount',`type=volume,source=${volume},target=/data${writeVolume?'':',readonly'}`]:[]),
     '--mount',`type=bind,source=${backup},target=/backup${writeBackup?'':',readonly'}`,
     '--mount',`type=bind,source=${volumeTool},target=/tool/volume.mjs,readonly`,image,'node','/tool/volume.mjs',...command]);
 }
-async function copyConfig(output) {
+async function copyConfig(output,profile) {
   const copied=[];
   async function copy(name) {
     const source=resolve(root,name),info=await lstat(source);
@@ -73,7 +96,7 @@ async function copyConfig(output) {
       const dest=resolve(output,'config',name);await mkdir(dirname(dest),{recursive:true,mode:0o700});await copyFile(source,dest);await chmod(dest,0o600);copied.push('config/'+name);
     } else throw new Error('Unsupported configuration file');
   }
-  for(const name of [...composeFiles,'grafana','monitoring','.monitoring-secrets'])await copy(name);
+  for(const name of [...profile.composeFiles,...profile.configPaths])await copy(name);
   if(await exists(resolve(root,'.env')))await copy('.env');
   return copied;
 }
@@ -83,7 +106,8 @@ export async function backup({project,output,withoutImages=false}) {
   const ids=run(['ps','-aq','--filter','label=com.docker.compose.project='+project]).split(/\s+/).filter(Boolean);
   if(!ids.length)throw new Error('Source project containers were not found');
   const containers=inspectContainer(ids);assertStopped(containers);const stamp=containerStamp(containers);
-  const services={};for(const service of requiredServices) {
+  const profile=sourceProfile(containers),roles=profile.roles;
+  const services={};for(const service of profile.services) {
     const matches=containers.filter(c=>c.Config.Labels['com.docker.compose.service']===service);
     if(matches.length!==1)throw new Error('Expected exactly one source service: '+service);
     services[service]={image:matches[0].Image,configuredImage:matches[0].Config.Image,exitCode:matches[0].State.ExitCode};
@@ -100,9 +124,9 @@ export async function backup({project,output,withoutImages=false}) {
     if(run(['ps','-q','--filter','volume='+mount.Name]))throw new Error('A source volume is mounted by a running container');
     volumes.push({role,source:mount.Name,file:'vol-'+role+'.tar.gz'});
   }
-  if(roles.some(role=>!volumes.some(v=>v.role===role)))throw new Error('The six-service data profile is incomplete');
+  if(roles.some(role=>!volumes.some(v=>v.role===role)))throw new Error('The source data profile is incomplete');
   await mkdir(output,{mode:0o700});await writeFile(resolve(output,'.gitignore'),'*\n',{mode:0o600});
-  const configFiles=await copyConfig(output),files={};
+  const configFiles=await copyConfig(output,profile),files={};
   for(const volume of volumes) {
     assertStopped(inspectContainer(ids));log('Backing up '+volume.role);
     volume.fingerprint=helper(helperImage,{volume:volume.source,backup:output,writeBackup:true,command:['snapshot',volume.file]});
@@ -113,15 +137,16 @@ export async function backup({project,output,withoutImages=false}) {
   for(const name of configFiles)files[name]=await sha256(resolve(output,name));
   const finalContainers=inspectContainer(ids);assertStopped(finalContainers);
   if(stamp!==containerStamp(finalContainers))throw new Error('Source containers changed during backup; no complete manifest was written');
-  const manifest={formatVersion:1,toolVersion:'0.1.0',createdAt:new Date().toISOString(),backupId:randomUUID(),sourceProject:project,architecture:inspectImage(helperImage).Architecture,helperImage,services,volumes,configFiles,imagesFile,files};
+  const manifest={formatVersion:1,toolVersion:'0.2.0',profile:profile.name,createdAt:new Date().toISOString(),backupId:randomUUID(),sourceProject:project,architecture:inspectImage(helperImage).Architecture,helperImage,services,volumes,configFiles,imagesFile,files};
   await writeFile(resolve(output,'manifest.json'),JSON.stringify(manifest,null,2)+'\n',{mode:0o600,flag:'wx'});
   log('Backup complete: '+output);return manifest;
 }
 export function restoreOverride(manifest,port) {
-  const url='http://127.0.0.1:'+port;
+  const profile=manifestProfile(manifest),url='http://127.0.0.1:'+port;
   let text='services:\n';
-  for(const service of requiredServices) {
+  for(const service of profile.services) {
     text+='  '+service+':\n    image: '+JSON.stringify(manifest.services[service].image)+'\n    pull_policy: never\n';
+    if(service==='db')text+='    ports: !override []\n';
     if(service==='app')text+='    ports: !override []\n    environment:\n      PUBLIC_URL: '+url+'\n      DASHBOARD_PUBLIC_URL: '+url+'\n';
     if(service==='dashboard')text+='    environment:\n      GF_SERVER_ROOT_URL: '+url+'/grafana/\n';
     if(service==='frontend')text+='    ports: !override ["127.0.0.1:'+port+':8080"]\n    environment:\n      PUBLIC_URL: '+url+'\n';
@@ -145,6 +170,8 @@ export async function restore({input,project,directory,port=18088}) {
   const manifest=JSON.parse(await readFile(resolve(input,'manifest.json'),'utf8'));
   if(manifest.formatVersion!==1||!Array.isArray(manifest.volumes)||!Array.isArray(manifest.configFiles))throw new Error('Unsupported backup manifest');
   if(project===manifest.sourceProject)throw new Error('Restoring over the source project is forbidden');
+  const profile=manifestProfile(manifest),roles=profile.roles;
+  if(!manifest.services||Object.keys(manifest.services).length!==profile.services.length||profile.services.some(s=>!Object.hasOwn(manifest.services,s)))throw new Error('Unexpected backup services');
   if(await exists(directory))throw new Error('Restore directory must not exist');
   if(run(['ps','-aq','--filter','label=com.docker.compose.project='+project])||run(['volume','ls','-q','--filter','label=com.docker.compose.project='+project]))throw new Error('Restore project already exists');
   for(const role of [...roles,'grafanadata','grafanaplugins4112','grafanaplugins4234']) {
@@ -153,7 +180,7 @@ export async function restore({input,project,directory,port=18088}) {
   await verifyFiles(input,manifest.files);
   if(manifest.volumes.length!==roles.length||new Set(manifest.volumes.map(v=>v.role)).size!==roles.length||roles.some(role=>!manifest.volumes.some(v=>v.role===role)))throw new Error('Unexpected backup data volumes');
   for(const volume of manifest.volumes)if(volume.file!=='vol-'+volume.role+'.tar.gz'||!manifest.files[volume.file])throw new Error('Invalid volume archive');
-  for(const service of requiredServices)if(!/^sha256:[a-f0-9]{64}$/.test(manifest.services?.[service]?.image))throw new Error('Invalid service image');
+  for(const service of profile.services)if(!/^sha256:[a-f0-9]{64}$/.test(manifest.services?.[service]?.image))throw new Error('Invalid service image');
   if(!/^sha256:[a-f0-9]{64}$/.test(manifest.helperImage))throw new Error('Invalid helper image');
   const imageIds=[...new Set([manifest.helperImage,...Object.values(manifest.services).map(s=>s.image)])];
   const missing=imageIds.some(image=>{try{inspectImage(image);return false;}catch{return true;}});
@@ -171,7 +198,7 @@ export async function restore({input,project,directory,port=18088}) {
   }
   await writeFile(resolve(directory,'recovery.override.yml'),restoreOverride(manifest,port),{mode:0o600});
   await writeFile(resolve(directory,'recovery.json'),JSON.stringify({backupId:manifest.backupId,sourceProject:manifest.sourceProject,project,createdAt:new Date().toISOString()},null,2),{mode:0o600});
-  const args=composeArgs(project,directory,true),configuration=json([...args,'config','--format','json'],{cwd:directory});
+  const args=composeArgs(project,directory,profile,true),configuration=json([...args,'config','--format','json'],{cwd:directory});
   validateIsolation(configuration,project,directory);
   for(const volume of manifest.volumes) {
     log('Restoring '+volume.role);const name=project+'_'+volume.role;
@@ -180,7 +207,7 @@ export async function restore({input,project,directory,port=18088}) {
     if(actual.sha256!==volume.fingerprint.sha256)throw new Error('Restored volume does not match the snapshot: '+volume.role);
   }
   // Preserve the copied secret bytes; only set permissions needed by container GID 65530.
-  run(['run','--rm','--network','none','--memory','256m','--cpus','1','--pids-limit','64','--read-only','--cap-drop=ALL','--cap-add=CHOWN','--cap-add=FOWNER','--security-opt=no-new-privileges:true','--mount',`type=bind,source=${directory},target=/workspace`,manifest.helperImage,'node','--input-type=module','-e',"import{chmod,chown}from'node:fs/promises';for(const name of['dashboard-password','operator-password']){const p='/workspace/.monitoring-secrets/'+name;await chown(p,0,65530);await chmod(p,0o440);}"]);
+  if(profile.name==='monitoring-react')run(['run','--rm','--network','none','--memory','256m','--cpus','1','--pids-limit','64','--read-only','--cap-drop=ALL','--cap-add=CHOWN','--cap-add=FOWNER','--security-opt=no-new-privileges:true','--mount',`type=bind,source=${directory},target=/workspace`,manifest.helperImage,'node','--input-type=module','-e',"import{chmod,chown}from'node:fs/promises';for(const name of['dashboard-password','operator-password']){const p='/workspace/.monitoring-secrets/'+name;await chown(p,0,65530);await chmod(p,0o440);}"]);
   log('Starting restored containers');run([...args,'up','-d','--no-build','--pull','never','--wait','--wait-timeout','180'],{cwd:directory});
   log('Restored cabinet: http://127.0.0.1:'+port);return {directory,project,port,backupId:manifest.backupId};
 }

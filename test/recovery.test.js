@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, unlink, rmdir, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { projectName, safeFile, targetPort, restoreOverride, restore, verifyFiles, validateIsolation } from '../scripts/recovery.mjs';
+import { projectName, safeFile, targetPort, restoreOverride, restore, verifyFiles, validateIsolation, sourceProfile } from '../scripts/recovery.mjs';
 
 test('recovery rejects ambiguous project names and unsafe manifest paths',()=>{
   for(const value of ['','main/project','UPPER','../main','a'.repeat(49),undefined])assert.throws(()=>projectName(value));
@@ -54,4 +54,34 @@ test('restored services cannot reuse source networks, writable host paths, exter
     c=>{c.networks.default.name='source_default';},
     c=>{c.secrets.password.file=join(tmpdir(),'source-secret');},
   ]) {const bad=structuredClone(good);change(bad);assert.throws(()=>validateIsolation(bad,project,directory));}
+});
+
+test('backup selects only complete known service sets and rejects orphan or duplicate containers',()=>{
+  const names=['app','db','dashboard','frontend','prometheus'];
+  const containers=names=>names.map(name=>({Config:{Labels:{'com.docker.compose.service':name}}}));
+  assert.equal(sourceProfile(containers(names)).name,'lab5');
+  assert.equal(sourceProfile(containers([...names,'monitoring-dashboard'])).name,'monitoring-react');
+  for(const value of [[],names.slice(1),[...names,'checks'],[...names,'app']])assert.throws(()=>sourceProfile(containers(value)),/profile/);
+});
+
+test('lab5 restore pins all five images, removes API and DB listeners and omits the operator service',()=>{
+  const services=Object.fromEntries(['app','db','dashboard','frontend','prometheus'].map(s=>[s,{image:'sha256:'+'b'.repeat(64)}]));
+  const yaml=restoreOverride({profile:'lab5',services},18120);
+  assert.equal((yaml.match(/pull_policy: never/g)||[]).length,5);
+  assert.match(yaml,/127\.0\.0\.1:18120:8080/);
+  assert.match(yaml,/127\.0\.0\.1:18121:9090/);
+  assert.doesNotMatch(yaml,/monitoring-dashboard|18122/);
+  assert.match(yaml,/db:\n    image:.*\n    pull_policy: never\n    ports: !override \[\]/);
+  assert.throws(()=>restoreOverride({profile:'unknown',services},18120),/Unsupported backup profile/);
+});
+
+test('restore rejects an unknown profile or mismatched service set before touching Docker or destination',async t=>{
+  const directory=await mkdtemp(join(tmpdir(),'ulsa-profile-test-')),file=join(directory,'manifest.json'),target=directory+'-target';
+  t.after(async()=>{await unlink(file);await rmdir(directory);});
+  const base={formatVersion:1,sourceProject:'source',volumes:[],configFiles:[],services:{}};
+  await writeFile(file,JSON.stringify({...base,profile:'unknown'}));
+  await assert.rejects(restore({input:directory,project:'copy',directory:target}),/Unsupported backup profile/);
+  await writeFile(file,JSON.stringify({...base,profile:'lab5'}));
+  await assert.rejects(restore({input:directory,project:'copy',directory:target}),/Unexpected backup services/);
+  await assert.rejects(access(target));
 });
