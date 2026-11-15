@@ -9,7 +9,7 @@ import { SERVER_VERSION, LAB_IMAGE_VERSION } from './version.js';
 
 const knownNames = new Map([['screen_view', 'Открытие экрана'], ['button_click', 'Нажатие кнопки'], ['action_success', 'Успешное действие']]);
 
-export function pageRouter({ config, store }) {
+export function pageRouter({ config, store, metrics = null }) {
   const router = Router();
   const sendExport = createDataExporter(store);
   const formSecret = randomBytes(32);
@@ -58,7 +58,8 @@ export function pageRouter({ config, store }) {
         eventId: scalar('eventId'), sessionId: scalar('sessionId'), occurredAt: scalar('occurredAt'),
         name, screen: scalar('screen').trim() || null, platform: 'web', appVersion: SERVER_VERSION, properties,
       }] });
-      await store.ingest(config.projectId, events);
+      const result = await store.ingest(config.projectId, events);
+      metrics?.ingested(result);
       res.redirect(303, `/dashboard?saved=${events[0].eventId}`);
     } catch (error) {
       if (!(error instanceof ApiError)) throw error;

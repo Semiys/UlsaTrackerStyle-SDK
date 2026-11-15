@@ -64,9 +64,11 @@ export class GrafanaCabinet {
     const password = this.accounts.derive('clickhouse-reader:' + owner.id);
     const allowed = applications.length ? `project_id IN (${applications.map(a => `'${a.id}'`).join(',')})` : '0';
     await this.store.client.command({ query: `CREATE USER IF NOT EXISTS ${reader} IDENTIFIED WITH sha256_password BY '${password}' SETTINGS PROFILE 'grafana_readonly'` });
-    await this.store.client.command({ query: `GRANT SELECT ON ${this.config.clickhouse.database}.events TO ${reader}` });
-    await this.store.client.command({ query: `CREATE ROW POLICY IF NOT EXISTS ${reader} ON ${this.config.clickhouse.database}.events FOR SELECT USING ${allowed} TO ${reader}` });
-    await this.store.client.command({ query: `ALTER ROW POLICY ${reader} ON ${this.config.clickhouse.database}.events FOR SELECT USING ${allowed} TO ${reader}` });
+    for (const table of ['events', 'ingestion_receipts']) {
+      await this.store.client.command({ query: `GRANT SELECT ON ${this.config.clickhouse.database}.${table} TO ${reader}` });
+      await this.store.client.command({ query: `CREATE ROW POLICY IF NOT EXISTS ${reader} ON ${this.config.clickhouse.database}.${table} FOR SELECT USING ${allowed} TO ${reader}` });
+      await this.store.client.command({ query: `ALTER ROW POLICY ${reader} ON ${this.config.clickhouse.database}.${table} FOR SELECT USING ${allowed} TO ${reader}` });
+    }
     const source = { uid: 'owner-events', name: 'ClickHouse · мои приложения', type: 'grafana-clickhouse-datasource', access: 'proxy', isDefault: true,
       jsonData: { host: 'db', port: 8123, protocol: 'http', secure: false, username: reader,
         defaultDatabase: this.config.clickhouse.database, dialTimeout: '10', queryTimeout: '30', maxOpenConns: '2', maxIdleConns: '2' }, secureJsonData: { password } };

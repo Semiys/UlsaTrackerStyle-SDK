@@ -49,7 +49,7 @@ function PeriodPicker({ value, onApply }: { value: Selection; onApply: (s: Selec
     </div><p id="range-error" className="range-error" role="alert" hidden={!error}>{error}</p><footer className="range-footer"><span className="muted small">Ручной период — до 366 дней. Вся история доступна отдельным пунктом.</span><div className="controls"><button className="button secondary" type="button" onClick={close}>Отменить</button><button className="button">Применить</button></div></footer>
   </form></dialog></>;
 }
-function ExportDialog({ appId, selection }: { appId: string; selection: Selection }) {
+function ExportDialog({ scopeBase, selection }: { scopeBase: string; selection: Selection }) {
   const [format, setFormat] = useState<'csv'|'json'|null>(null), [status, setStatus] = useState(''), [busy, setBusy] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null), abort = useRef<AbortController | null>(null), trigger = useRef<HTMLButtonElement | null>(null);
   const revision = useRef(0), lock = useRef(false);
@@ -62,7 +62,7 @@ function ExportDialog({ appId, selection }: { appId: string; selection: Selectio
     try {
       const range = resolveRange(selection), params = new URLSearchParams({ to:String(range.to),timezone:browserTimeZone(),kind });
       if (all(selection)) params.set('period','all'); else params.set('from',String(range.from));
-      const response = await fetch('/console/apps/' + appId + '/export.' + format + '?' + params, { credentials:'same-origin',cache:'no-store',signal:abort.current.signal,redirect:'error' });
+      const response = await fetch(scopeBase + '/export.' + format + '?' + params, { credentials:'same-origin',cache:'no-store',signal:abort.current.signal,redirect:'error' });
       if (!response.ok) { const body = await response.json().catch(() => null); throw new Error(body?.error?.message ?? 'Не удалось скачать файл. Проверьте вход в кабинет.'); }
       const expected = format === 'json' ? 'application/json' : 'text/csv';
       if (!response.headers.get('content-type')?.startsWith(expected)) throw new Error('Неожиданный ответ. Войдите в кабинет и повторите.');
@@ -81,9 +81,10 @@ function ExportDialog({ appId, selection }: { appId: string; selection: Selectio
       <p className="muted small">До 10 000 записей и 8 МиБ. {format === 'json' ? 'JSON сохраняет структуру и типы значений.' : 'CSV открывается в табличных редакторах.'}</p><p className="export-status" role="status">{status}</p><button className="button secondary" onClick={close}>{busy ? 'Отменить скачивание' : 'Закрыть'}</button>
     </dialog></>;
 }
-export function Statistics() {
+export function Statistics({ demo = false }: { demo?: boolean }) {
   const location = useLocation(), appId = location.pathname.split('/')[3];
-  const data = useResource<{ application: Application; dashboardUrl: string }>('/apps/' + appId + '/statistics');
+  const scopeBase = demo ? '/dashboard' : '/console/apps/' + appId;
+  const data = useResource<{ application: Application; dashboardUrl: string }>(demo ? '/statistics' : '/apps/' + appId + '/statistics', demo ? 'demo' : 'console');
   const [params, setParams] = useSearchParams();
   const selection = readSelection(params) as Selection, identity = JSON.stringify(selection);
   const [frameUrl, setFrameUrl] = useState(''), [status, setStatus] = useState(''), [tick, setTick] = useState(0);
@@ -102,7 +103,7 @@ export function Statistics() {
       if (all(selection)) {
         if (!background) setFrameUrl('');
         try {
-          const response = await fetch('/console/apps/' + appId + '/range', { cache:'no-store',credentials:'same-origin',signal:abort.signal,redirect:'error' });
+          const response = await fetch(scopeBase + '/range', { cache:'no-store',credentials:'same-origin',signal:abort.signal,redirect:'error' });
           if (!response.ok) throw new Error();
           first = (await response.json()).firstEventAt;
           if (first !== null && (!Number.isSafeInteger(first) || first < 0 || first > Date.now())) throw new Error();
@@ -119,11 +120,11 @@ export function Statistics() {
     open();
     const timer = setInterval(() => { if (all(selection) && document.visibilityState === 'visible') open(true); },30000);
     return () => { abort.abort(); clearInterval(timer); };
-  }, [data.data,identity,tick,appId]);
+  }, [data.data,identity,tick,appId,scopeBase]);
   function apply(value: Selection) { const p = new URLSearchParams(params); ['days','period','from','to'].forEach(k => p.delete(k)); if (value.kind === 'relative') p.set('period',value.id); else { p.set('from',String(value.from));p.set('to',String(value.to)); } setParams(p,{replace:true}); }
   if (!data.data) return data.error ? <Notice error>{data.error}</Notice> : <p role="status">Загружаем статистику…</p>;
   const a = data.data.application, full = frameUrl ? new URL(frameUrl) : null; full?.searchParams.delete('kiosk');
-  return <div className="grafana-main"><section className="stats-header"><div><p className="eyebrow">{a.project_name}</p><h1>{a.name}</h1><p className="muted">Статистика приложения · местное время</p></div><div className="controls"><Link className="button secondary" to={'/console/apps/' + a.id}>Подключение</Link><ExportDialog appId={appId} selection={selection} /><button className="button secondary" onClick={() => { if (frame.current && frameUrl) { setStatus('Обновляем панель…'); frame.current.src = frameUrl; } setTick(v => v + 1); }}>Обновить панель</button>{full && <a className="button secondary" href={full.href} target="_blank" rel="noopener">На весь экран</a>}</div></section>
+  return <div className="grafana-main"><section className="stats-header"><div><p className="eyebrow">{a.project_name}</p><h1>{a.name}</h1><p className="muted">Статистика приложения · местное время</p></div><div className="controls">{demo ? <Link className="button secondary" to="/system-state">Состояние системы</Link> : <Link className="button secondary" to={'/console/apps/' + a.id}>Подключение</Link>}<ExportDialog scopeBase={scopeBase} selection={selection} /><button className="button secondary" onClick={() => { if (frame.current && frameUrl) { setStatus('Обновляем панель…'); frame.current.src = frameUrl; } setTick(v => v + 1); }}>Обновить панель</button>{full && <a className="button secondary" href={full.href} target="_blank" rel="noopener">На весь экран</a>}</div></section>
     <PeriodPicker value={selection} onApply={apply} />
     <p className="muted small">{all(selection) ? 'Показана вся сохранённая история. До начала этой истории предыдущий период не содержит событий.' : 'Сравнение показывает предыдущий отрезок той же длительности.'} Переходы учитываются внутри одной сессии. Сессии не равны числу уникальных пользователей.</p>
     {status && <p className="muted small frame-error" role="status">{status}</p>}

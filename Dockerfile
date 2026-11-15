@@ -73,6 +73,7 @@ COPY scripts/download-grafana-plugin.mjs /build/download-grafana-plugin.mjs
 RUN node /build/download-grafana-plugin.mjs "$TARGETARCH"
 
 FROM lab-dependencies AS lab4-test
+COPY frontend/server.mjs ./frontend/server.mjs
 COPY src ./src
 COPY test ./test
 COPY public ./public
@@ -90,7 +91,11 @@ ENV LAB_IMAGE_VERSION=0.0.4
 EXPOSE 3000
 USER node
 
-FROM lab4 AS runtime
+FROM lab4 AS lab5
+ENV LAB_IMAGE_VERSION=0.0.5 METRICS_ENABLED=1 METRICS_PORT=9100
+EXPOSE 9100
+
+FROM lab5 AS runtime
 
 
 # Current product/monitoring release. Reproduce historical labs from their tagged source.

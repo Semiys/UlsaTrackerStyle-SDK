@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { validateBatch } from './events.js';
 import { ApiError } from './errors.js';
+import { demoApiRouter } from './demo-api.js';
 import { pageRouter } from './pages.js';
 import { SERVER_VERSION, LAB_IMAGE_VERSION } from './version.js';
 import { consoleRouter } from './console-pages.js';
@@ -71,6 +72,7 @@ export function createApp({ config, store, accounts = null, grafana = null, metr
   app.get('/api/v1/events/recent', authorize(config.readKey), async (req, res) => {
     res.json({ events: await store.recent(config.projectId), limit: 50 });
   });
+  app.use('/api/demo', demoApiRouter({ config, store, metrics }));
   if (accounts) app.use('/api/console', sessionMiddleware(accounts, config), consoleApiRouter({ config, accounts, store, grafana, limits: consoleLimits, metrics }));
   app.use('/api', (req, res) => res.status(404).json({ error: { code: 'not_found', message: 'Маршрут не найден.' } }));
   if (accounts) {
@@ -87,12 +89,12 @@ export function createApp({ config, store, accounts = null, grafana = null, metr
     app.use(consoleRouter({ config, accounts, store, grafana, limits: consoleLimits }));
     app.use('/sdk', (req, res, next) => { res.set('Access-Control-Allow-Origin', '*'); next(); });
   }
-  app.use(pageRouter({ config, store }));
+  app.use(pageRouter({ config, store, metrics }));
   app.use(express.static(fileURLToPath(new URL('../public/', import.meta.url)), { index: false }));
   app.use((req, res, next) => next(new ApiError(404, 'not_found', 'Страница не найдена. Перейдите к доступным действиям через меню.')));
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
-    if (error.type === 'entity.too.large') error = new ApiError(413, 'payload_too_large', req.path.startsWith('/api/console/') ? 'Форма превышает 12 КиБ.' : req.path === '/events' ? 'Форма превышает 8 КиБ.' : 'Пакет превышает 64 КиБ.');
+    if (error.type === 'entity.too.large') error = new ApiError(413, 'payload_too_large', req.path.startsWith('/api/console/') ? 'Форма превышает 12 КиБ.' : (req.path === '/events' || req.path.startsWith('/api/demo/')) ? 'Форма превышает 8 КиБ.' : 'Пакет превышает 64 КиБ.');
     if (error.type === 'entity.parse.failed') error = new ApiError(400, 'invalid_json', 'Некорректный JSON.');
     if (error.code === 'server_busy') res.set('Retry-After', '1');
     if (!(error instanceof ApiError)) console.error('Analytics operation failed:', error.name);
