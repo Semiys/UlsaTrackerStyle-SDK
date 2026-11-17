@@ -1,0 +1,165 @@
+{
+  "version": "0.12.1",
+  "revision": "b380e0fa2c5cf65a1fc16a73422bf5219a0128db",
+  "capturedAt": "2026-11-17T15:49:09.461Z",
+  "images": {
+    "app": {
+      "ref": "semiys/ulsatrackerstyle-sdk:0.12.1",
+      "digest": "sha256:3b7ab276e59ecf0b13ea007cee09e7a780aa2c978bb6e4a49ae381c251a404d4",
+      "digestRef": "semiys/ulsatrackerstyle-sdk:0.12.1@sha256:3b7ab276e59ecf0b13ea007cee09e7a780aa2c978bb6e4a49ae381c251a404d4",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ],
+      "manifests": [
+        {
+          "digest": "sha256:3b6cb16eb10f9cf3b3045b74410aae9dfe6984c1f14fcb24300467395b8b0637",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:0b4fff41b301fbe2f817988eaefe2429b673bda92641fc91fe202536fc30c13f",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux"
+          }
+        }
+      ]
+    },
+    "frontend": {
+      "ref": "semiys/ulsatrackerstyle-frontend:0.12.1",
+      "digest": "sha256:376da95799c5bba1067dccb82ee1ae1a309c964fc9dab25911a40d49494cba4b",
+      "digestRef": "semiys/ulsatrackerstyle-frontend:0.12.1@sha256:376da95799c5bba1067dccb82ee1ae1a309c964fc9dab25911a40d49494cba4b",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ],
+      "manifests": [
+        {
+          "digest": "sha256:7642f0535adcdafdb0389abb540ecaf260ff314e5b073dfcff8f1041b259ca29",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:adf14664c4da510d656532e1213527bfd5f3a8a1ccd59249c409854822890626",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux"
+          }
+        }
+      ]
+    },
+    "grafana": {
+      "ref": "semiys/ulsatrackerstyle-sdk:0.12.1-grafana",
+      "digest": "sha256:d48b071ce14982b4457b79cfeb4178d9beceff668c30a0266b0ef345a84e3663",
+      "digestRef": "semiys/ulsatrackerstyle-sdk:0.12.1-grafana@sha256:d48b071ce14982b4457b79cfeb4178d9beceff668c30a0266b0ef345a84e3663",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ],
+      "manifests": [
+        {
+          "digest": "sha256:132e93e8c6fab7a61c8c89492cac0e2b6454391f7f2a8ec9bd7ef1e8d3987907",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:59cd197fa58bbe4787d0af3d3fc0fc9cbc3a27cce2895215f8a97a4b9e608c93",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux"
+          }
+        }
+      ]
+    },
+    "clickhouse": {
+      "ref": "clickhouse/clickhouse-server:26.8.34.13",
+      "digest": "sha256:8b28eb09479c36c4533eec7a6268917d04ba3a6fd90e3f4205f70e761b6d7779",
+      "digestRef": "clickhouse/clickhouse-server:26.8.34.13@sha256:8b28eb09479c36c4533eec7a6268917d04ba3a6fd90e3f4205f70e761b6d7779",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ],
+      "manifests": [
+        {
+          "digest": "sha256:ed334fbfae35c4f9fa328534821280b59d1c4677df8f3cf0e950cf7501a25bde",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:b2910adff2a8b7616ad8c6aca4fc1f73b19fb2473a4f406ab26a9b1ac3850422",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux"
+          }
+        }
+      ]
+    },
+    "prometheus": {
+      "ref": "prom/prometheus:v3.13.5",
+      "digest": "sha256:aafa9d694e6a883c02db516d9f6e5b84e14195f49a2a6456a4cca815edda72b9",
+      "digestRef": "prom/prometheus:v3.13.5@sha256:aafa9d694e6a883c02db516d9f6e5b84e14195f49a2a6456a4cca815edda72b9",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64",
+        "linux/arm",
+        "linux/ppc64le",
+        "linux/riscv64",
+        "linux/s390x"
+      ],
+      "manifests": [
+        {
+          "digest": "sha256:dc30314819e04a1a3d18d0b37eaa9c8e4e18f33f026e3e2d81bf127c7cddcd55",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:1ced961cbefad14f6c04f564ebf3902b7ba963cf1604cb1666bacdcd540e78bc",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:2c4b06a525ac483fb5f889f5c263d5f79219fe9a928772af0c6cc73665a3fa2f",
+          "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v7"
+          }
+        },
+        {
+          "digest": "sha256:12ee2cdd1b9fea65125b0852e5b669ff95b402d3841c5de7b79eb9a370fbc6ac",
+          "platform": {
+            "architecture": "ppc64le",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:ac17619d18b9f475f4fe908f797449e4ae043cfbebf5964f1f599d8a45733490",
+          "platform": {
+            "architecture": "riscv64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:53ef79ca162b36e51d3ba49d1c8b1e98e56ef15ed31ed0178751fc78721fb5c9",
+          "platform": {
+            "architecture": "s390x",
+            "os": "linux"
+          }
+        }
+      ]
+    }
+  }
+}
