@@ -1,0 +1,25 @@
+# UlsaTrackerStyle SDK 0.12.1. Combine with the three source Compose files.
+# Every image is pinned to a multi-architecture digest. Docker selects the host platform.
+services:
+  app:
+    image: semiys/ulsatrackerstyle-sdk:0.12.1@sha256:3b7ab276e59ecf0b13ea007cee09e7a780aa2c978bb6e4a49ae381c251a404d4
+    build: !reset null
+    pull_policy: always
+  frontend:
+    image: semiys/ulsatrackerstyle-frontend:0.12.1@sha256:376da95799c5bba1067dccb82ee1ae1a309c964fc9dab25911a40d49494cba4b
+    build: !reset null
+    pull_policy: always
+  dashboard:
+    image: semiys/ulsatrackerstyle-sdk:0.12.1-grafana@sha256:d48b071ce14982b4457b79cfeb4178d9beceff668c30a0266b0ef345a84e3663
+    build: !reset null
+    pull_policy: always
+  monitoring-dashboard:
+    image: semiys/ulsatrackerstyle-sdk:0.12.1-grafana@sha256:d48b071ce14982b4457b79cfeb4178d9beceff668c30a0266b0ef345a84e3663
+    build: !reset null
+    pull_policy: always
+  db:
+    image: clickhouse/clickhouse-server:26.8.34.13@sha256:8b28eb09479c36c4533eec7a6268917d04ba3a6fd90e3f4205f70e761b6d7779
+    pull_policy: always
+  prometheus:
+    image: prom/prometheus:v3.13.5@sha256:aafa9d694e6a883c02db516d9f6e5b84e14195f49a2a6456a4cca815edda72b9
+    pull_policy: always
