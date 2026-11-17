@@ -44,3 +44,21 @@ test('frontend reports unavailable API as JSON without falling back to the SPA',
   const {base,backend}=await fixture(t); backend.closeAllConnections(); await new Promise(r=>backend.close(r));
   const response=await fetch(base+'/api/console/session'); assert.equal(response.status,502); assert.equal((await response.json()).error.code,'api_unavailable');
 });
+
+test('proxy requests use independent upstream sockets for streamed mutations', async t => {
+  const {base,backend}=await fixture(t);
+  let connections=0; backend.on('connection',()=>connections++);
+  for(let i=0;i<3;i++) {
+    const response=await fetch(base+'/api/v1/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({schemaVersion:1,events:[]})});
+    assert.equal(response.status,200); await response.json();
+  }
+  assert.equal(connections,3);
+});
+test('an upstream socket failure never causes the proxy to replay a POST', async t => {
+  const {base,backend}=await fixture(t);
+  let mutations=0; backend.removeAllListeners('request');
+  backend.on('request',req=>{mutations++;req.socket.destroy();});
+  const response=await fetch(base+'/api/v1/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({schemaVersion:1,events:[]})});
+  assert.equal(response.status,502);assert.equal((await response.json()).error.code,'api_unavailable');
+  assert.equal(mutations,1);
+});

@@ -1,13 +1,14 @@
 # Local operator monitoring. Combine with docker-compose.yml.
 services:
   app:
-    image: ulsatrackerstyle-sdk:0.12.0
+    image: ulsatrackerstyle-sdk:0.12.1
     build: {context: ., target: monitoring-runtime}
     pull_policy: never
     environment:
       METRICS_ENABLED: "1"
       METRICS_PORT: "9100"
-      LAB_IMAGE_VERSION: 0.12.0
+      LAB_IMAGE_VERSION: 0.12.1
+      INGEST_RATE_LIMIT_REQUESTS: ${INGEST_RATE_LIMIT_REQUESTS:-1200}
       GRAFANA_ADMIN_PASSWORD_FILE: /run/secrets/product_dashboard_password
     volumes:
       - grafanaplugins4234:/opt/ulsatracker/grafana-plugins:ro

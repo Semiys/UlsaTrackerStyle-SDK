@@ -10,6 +10,11 @@ export async function loadConfig(env = process.env) {
   const demoMode = env.DEMO_MODE === '1';
   if (env.CONSOLE_ENABLED !== undefined && !['0', '1'].includes(env.CONSOLE_ENABLED)) throw new Error('CONSOLE_ENABLED must be 0 or 1');
   const consoleEnabled = env.CONSOLE_ENABLED === '1';
+  const ingestRateText = String(env.INGEST_RATE_LIMIT_REQUESTS ?? '1200');
+  if (!/^[1-9][0-9]{0,4}$/.test(ingestRateText) || Number(ingestRateText) > 60000) {
+    throw new Error('INGEST_RATE_LIMIT_REQUESTS must be an integer from 1 to 60000');
+  }
+  const ingestRateLimitRequests = Number(ingestRateText);
   const publicUrl = new URL(env.PUBLIC_URL ?? 'http://localhost:8080');
   if (!['http:', 'https:'].includes(publicUrl.protocol) || publicUrl.username || publicUrl.password || publicUrl.pathname !== '/' || publicUrl.search || publicUrl.hash) throw new Error('Invalid PUBLIC_URL');
   if (demoMode && storageBackend === 'duckdb') throw new Error('The lab demo requires JSON or ClickHouse storage');
@@ -80,7 +85,7 @@ export async function loadConfig(env = process.env) {
   const grafanaInternal = new URL(env.GRAFANA_INTERNAL_URL ?? 'http://dashboard:3000');
   if (!['http:', 'https:'].includes(grafanaInternal.protocol) || grafanaInternal.username || grafanaInternal.password
       || grafanaInternal.pathname !== '/' || grafanaInternal.search || grafanaInternal.hash) throw new Error('Invalid GRAFANA_INTERNAL_URL');
-  return { ...access, demoMode, storageBackend, dataDir, clickhouse, dashboardProvider, dashboardUrl,
+  return { ...access, ingestRateLimitRequests, demoMode, storageBackend, dataDir, clickhouse, dashboardProvider, dashboardUrl,
     consoleEnabled, publicUrl: publicUrl.origin, secureCookies: publicUrl.protocol === 'https:',
     accountsPath: join(dataDir, 'accounts.sqlite'), grafanaInternalUrl: grafanaInternal.origin,
     grafanaAdminUser: env.GRAFANA_ADMIN_USER ?? 'app', grafanaAdminPassword: grafanaPassword ?? 'app',
