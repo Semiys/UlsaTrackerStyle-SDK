@@ -3,7 +3,7 @@ import { WindowLimiter } from './accounts.js';
 import { ApiError } from './errors.js';
 
 export function ingestAccess({ config, accounts }) {
-  const rate = new WindowLimiter(120, 60_000);
+  const rate = new WindowLimiter(config.ingestRateLimitRequests ?? 1200, 60_000);
   const expected = createHash('sha256').update(config.ingestKey).digest();
   return (req, res, next) => {
     res.set('Cache-Control', 'no-store');

@@ -193,3 +193,131 @@ test('application event deletion waits for prior writes, removes only its rows a
   await f.store.deleteProjectEvents(f.project);
   assert.equal((await f.store.stats(sibling, 7)).totals.events, 1);
 });
+
+test('one statistics read retains null dimensions custom events and independent totals', options, async t => {
+  const f = await fixture(t), sessionA = randomUUID(), sessionB = randomUUID();
+  const today = new Date(); const midnight = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const at = new Date(midnight).toISOString();
+  await f.store.ingest(f.project, batch([
+    event({ sessionId: sessionA, occurredAt: at, name: 'screen_view', screen: null, properties: {} }),
+    event({ sessionId: sessionA, occurredAt: at, name: 'screen_view', screen: 'profile', properties: {} }),
+    event({ sessionId: sessionA, occurredAt: at, screen: 'profile', properties: { button: ' open ' } }),
+    event({ sessionId: sessionB, occurredAt: at, screen: null, properties: { button: 11 } }),
+    event({ sessionId: sessionB, occurredAt: at, name: 'action_success', screen: 'profile', properties: { action: ' save ' } }),
+    event({ sessionId: sessionB, occurredAt: at, name: 'action_success', screen: null, properties: { action: false } }),
+    event({ sessionId: sessionB, occurredAt: at, name: 'custom_event', screen: 'profile', properties: {} }),
+    event({ sessionId: sessionA, occurredAt: new Date(midnight - 1).toISOString(), name: 'screen_view', screen: 'past', properties: {} }),
+  ]));
+  const data = await f.store.stats(f.project, 1, today);
+  assert.deepEqual(data.totals, { events: 7, sessions: 2, screenViews: 2, buttonClicks: 2, successfulActions: 2 });
+  assert.deepEqual(data.byScreen, [{ screen: 'profile', count: 4 }]);
+  assert.deepEqual(data.byScreenViews, [{ screen: 'profile', count: 1 }, { screen: null, count: 1 }]);
+  assert.deepEqual(data.byButton, [{ button: 'open', screen: 'profile', count: 1 }, { button: null, screen: null, count: 1 }]);
+  assert.deepEqual(data.byAction, [{ action: 'save', screen: 'profile', count: 1 }, { action: null, screen: null, count: 1 }]);
+  assert.equal(data.byName.reduce((n, row) => n + row.count, 0), 7);
+  assert.equal(data.daily[0].count, 7);
+  assert.equal((await f.store.stats(f.project, 2, today)).totals.events, 8);
+});
+test('statistics totals and their breakdowns stay coherent during ingestion and retries', options, async t => {
+  const f = await fixture(t);
+  const check = data => {
+    assert.equal(data.byName.reduce((n, row) => n + row.count, 0), data.totals.events);
+    assert.equal(data.daily.reduce((n, row) => n + row.count, 0), data.totals.events);
+    assert.equal(data.byScreenViews.reduce((n, row) => n + row.count, 0), data.totals.screenViews);
+    assert.equal(data.byButton.reduce((n, row) => n + row.count, 0), data.totals.buttonClicks);
+    assert.equal(data.byAction.reduce((n, row) => n + row.count, 0), data.totals.successfulActions);
+  };
+  for (let i = 0; i < 8; i++) {
+    const records = batch([event({ name: 'screen_view', properties: {} }), event(), event({ name: 'action_success', properties: { action: 'saved' } })]);
+    await Promise.all([f.store.ingest(f.project, records), f.store.stats(f.project, 7).then(check), f.store.ingest(f.project, records)]);
+  }
+  const final = await f.store.stats(f.project, 7); check(final); assert.equal(final.totals.events, 24);
+});
+
+test('a conflicting packet does not insert its other IDs or poison adjacent valid packets', options, async t => {
+  const f = await fixture(t), first = event(), rejectedOnly = event(), last = event();
+  const outcomes = await Promise.allSettled([
+    f.store.ingest(f.project, batch([first])),
+    f.store.ingest(f.project, batch([rejectedOnly, { ...first, name: 'screen_view' }])),
+    f.store.ingest(f.project, batch([last])),
+  ]);
+  assert.equal(outcomes[0].status, 'fulfilled');
+  assert.equal(outcomes[1].status, 'rejected'); assert.equal(outcomes[1].reason.code, 'event_id_conflict');
+  assert.equal(outcomes[2].status, 'fulfilled');
+  const stored = await f.store.recent(f.project);
+  assert.deepEqual(new Set(stored.map(row => row.eventId)), new Set([first.eventId, last.eventId]));
+});
+test('grouped receipt failure rejects all replies and retries repair every source exactly once', options, async t => {
+  const f = await fixture(t), packets = Array.from({ length: 4 }, () => batch([event()]));
+  const insert = f.store.client.insert.bind(f.store.client);
+  f.store.client.insert = async args => {
+    if (args.table === 'ingestion_receipts') throw new Error('group receipt failure');
+    return insert(args);
+  };
+  const failed = await Promise.allSettled(packets.map(rows => f.store.ingest(f.project, rows)));
+  assert.ok(failed.every(result => result.status === 'rejected'));
+  assert.equal((await f.store.stats(f.project, 7)).totals.events, 4);
+  assert.equal((await f.store.operationalState(f.project)).total, 0);
+  f.store.client.insert = insert;
+  const replies = await Promise.all(packets.map(rows => f.store.ingest(f.project, rows)));
+  assert.equal(replies.reduce((n, reply) => n + reply.accepted, 0), 0);
+  assert.equal(replies.reduce((n, reply) => n + reply.duplicates, 0), 4);
+  assert.equal((await f.store.operationalState(f.project)).total, 4);
+  assert.equal((await f.store.stats(f.project, 7)).totals.events, 4);
+});
+test('deletion remains an ordering barrier between adjacent ingestion requests', options, async t => {
+  const f = await fixture(t), old = batch([event()]), next = batch([event()]);
+  const saved = f.store.ingest(f.project, old);
+  const removed = f.store.deleteProjectEvents(f.project);
+  const later = f.store.ingest(f.project, next);
+  await Promise.all([saved, removed, later]);
+  assert.deepEqual((await f.store.recent(f.project)).map(row => row.eventId), [next[0].eventId]);
+  assert.equal((await f.store.operationalState(f.project)).total, 1);
+});
+
+test('bounded ingestion backlog rejects overflow without poisoning accepted requests', options, async t => {
+  const f = await fixture(t), insert = f.store.client.insert.bind(f.store.client);
+  let entered, release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const writing = new Promise(resolve => { entered = resolve; });
+  f.store.client.insert = async args => { entered(); await blocked; return insert(args); };
+  const records = Array.from({ length: 64 }, () => batch([event()]));
+  const accepted = records.map(rows => f.store.ingest(f.project, rows));
+  await writing;
+  try {
+    await assert.rejects(f.store.ingest(f.project, batch([event()])), { code: 'server_busy' });
+  } finally { release(); }
+  const replies = await Promise.all(accepted);
+  assert.equal(replies.reduce((n, reply) => n + reply.accepted, 0), 64);
+  assert.equal(f.store.pendingIngest, 0);
+  assert.equal((await f.store.stats(f.project, 7)).totals.events, 64);
+  assert.equal((await f.store.operationalState(f.project)).total, 64);
+  assert.equal((await f.store.ingest(f.project, batch([event()]))).accepted, 1);
+});
+test('coalescing limits each real insert to one thousand events', options, async t => {
+  const f = await fixture(t), insert = f.store.client.insert.bind(f.store.client), sizes = [];
+  f.store.client.insert = async args => { if (args.table === 'events') sizes.push(args.values.length); return insert(args); };
+  const packets = Array.from({ length: 15 }, () => batch(Array.from({ length: 100 }, () => event())));
+  const replies = await Promise.all(packets.map(rows => f.store.ingest(f.project, rows)));
+  assert.equal(replies.reduce((n, reply) => n + reply.accepted, 0), 1500);
+  assert.ok(sizes.every(size => size <= 1000));
+  assert.equal(sizes.reduce((n, size) => n + size, 0), 1500);
+  assert.equal((await f.store.stats(f.project, 7)).totals.events, 1500);
+  assert.equal((await f.store.operationalState(f.project)).total, 1500);
+});
+
+test('an operation queue refusal cannot leave a stale ingestion group after recovery', { ...options, timeout: 10000 }, async t => {
+  const f = await fixture(t);
+  let release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const busy = Array.from({ length: 32 }, () => f.store.execute(() => blocked));
+  try {
+    await assert.rejects(f.store.ingest(f.project, batch([event()])), { code: 'server_busy' });
+  } finally { release(); }
+  await Promise.all(busy);
+  const result = await f.store.ingest(f.project, batch([event()]));
+  assert.equal(result.accepted, 1);
+  assert.equal(f.store.pendingIngest, 0);
+  assert.equal((await f.store.stats(f.project, 7)).totals.events, 1);
+  assert.equal((await f.store.operationalState(f.project)).total, 1);
+});

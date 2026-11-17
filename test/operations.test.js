@@ -40,14 +40,17 @@ test('operational receipts start empty, retain exact source IDs, deduplicate and
 });
 
 test('a receipt failure sends no ACK and retry repairs the trace without duplicating its source',integration,async t=>{
-  const {config,store}=await fixture(t),events=packet(),command=store.client.command.bind(store.client);
-  store.client.command=async args=>{if(args.query.startsWith('INSERT INTO ingestion_receipts'))throw new Error('controlled receipt failure');return command(args);};
+  const {config,store}=await fixture(t),events=packet(),insert=store.client.insert.bind(store.client);
+  store.client.insert=async args=>{if(args.table==='ingestion_receipts')throw new Error('controlled receipt failure');return insert(args);};
   await assert.rejects(store.ingest(config.projectId,events),/controlled receipt failure/);
   assert.equal((await store.stats(config.projectId,1)).totals.events,1);
   assert.deepEqual(await store.operationalState(config.projectId),{total:0,lastEvent:null});
-  store.client.command=command;
+  const sourceReceivedAt=(await store.recent(config.projectId))[0].receivedAt;
+  await new Promise(resolve=>setTimeout(resolve,25));
+  store.client.insert=insert;
   const reply=await store.ingest(config.projectId,events);assert.equal(reply.accepted,0);assert.equal(reply.duplicates,1);
   assert.deepEqual(reply.acknowledgedEventIds,[events[0].eventId]);
+  assert.equal((await store.operationalState(config.projectId)).lastEvent.observedAt,sourceReceivedAt);
   assert.equal((await store.operationalState(config.projectId)).total,1);
   assert.equal((await store.stats(config.projectId,1)).totals.events,1);
 });

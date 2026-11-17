@@ -22,13 +22,17 @@ export function createFrontendServer({ apiUrl, distDir, publicUrl = 'http://loca
       headers.host = req.headers.host ?? origin.host;
       headers['x-forwarded-for'] = req.socket.remoteAddress ?? '';
       headers['x-forwarded-host'] = origin.host; headers['x-forwarded-proto'] = origin.protocol.slice(0,-1);
-      const target = httpRequest({ hostname:upstream.hostname,port:upstream.port || 80,method:req.method,path:req.url,headers }, response => {
+      // A fresh upstream connection avoids reusing a socket closed by the API
+      // during an idle/keep-alive race. Never replay streamed mutations here.
+      const target = httpRequest({ hostname:upstream.hostname,port:upstream.port || 80,method:req.method,path:req.url,headers,agent:false }, response => {
         const responseHeaders = { ...response.headers }; delete responseHeaders.connection; delete responseHeaders['transfer-encoding'];
         res.writeHead(response.statusCode ?? 502,responseHeaders); response.pipe(res);
         response.on('error', () => res.destroy());
       });
       target.setTimeout(65000, () => target.destroy());
-      target.on('error', () => {
+      target.on('error', error => {
+        const code = ['ECONNRESET','ETIMEDOUT','ECONNREFUSED','EPIPE','EHOSTUNREACH','ENETUNREACH'].includes(error.code) ? error.code : 'UPSTREAM_ERROR';
+        console.warn(JSON.stringify({ event:'api_proxy_error',code,reusedSocket:target.reusedSocket === true }));
         if (res.headersSent) return res.destroy();
         res.writeHead(502,{ 'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store' });
         res.end(JSON.stringify({ error:{ code:'api_unavailable',message:'Сервис временно недоступен. Повторите подключение позже.' } }));
