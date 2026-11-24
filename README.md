@@ -17,6 +17,8 @@
 
 Для демонстрации обновления используйте свежий Compose-проект `ulsa-lab6-check` и свободные порты 8080, 3000 и 9090. Репозиторий https://github.com/Semiys/UlsaTrackerStyle-SDK. Образы `semiys/ulsatrackerstyle-sdk:0.0.6` и `semiys/ulsatrackerstyle-frontend:0.0.6` доступны в [репозитории API](https://hub.docker.com/r/semiys/ulsatrackerstyle-sdk) и [репозитории интерфейса](https://hub.docker.com/r/semiys/ulsatrackerstyle-frontend). Ветки для перехода — `lab5` и `lab6`.
 
+Pull Request — https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/11
+
 ```bash
 git clone -b lab5 https://github.com/Semiys/UlsaTrackerStyle-SDK
 cd UlsaTrackerStyle-SDK
