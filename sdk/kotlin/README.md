@@ -30,11 +30,11 @@ $env:GRADLE_USER_HOME = 'D:\AndroidProjectGradle\DomCollectionGradle'
 
 Тесты ядра запускаются на JVM из `commonTest`; транспорт и файловое хранилище — `jvmTest`. Docker-тест пропускается без `ULSA_TEST_ENDPOINT`, `ULSA_TEST_INGEST_KEY`, `ULSA_TEST_READ_KEY`. Он требует отдельную пустую БД и проверяет потерянный ответ после записи на сервер и повтор после пересоздания клиента. Не используйте рабочую статистику для этого теста.
 
-## Локальное подключение к Android-проекту
+## Подключение к Android-проекту
 
-Пока библиотека не опубликована в Maven, подключайте исходники composite build.
+После публикации в Maven Central добавьте `mavenCentral()` в репозитории Gradle и подключите зависимость, указанную ниже. Лицензия SDK приведена в [LICENSE-ulsa-tracker](tracker/src/commonMain/resources/META-INF/LICENSE-ulsa-tracker).
 
-`settings.gradle.kts` приложения:
+Для разработки из исходников добавьте composite build в `settings.gradle.kts` приложения.
 
 ```kotlin
 includeBuild("/path/to/UlsaTrackerStyle-SDK/sdk/kotlin") {

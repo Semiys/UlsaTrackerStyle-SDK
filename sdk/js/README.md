@@ -32,7 +32,13 @@ import { createTracker } from 'https://analytics.example.com/sdk/index.mjs';
 const tracker = createTracker({ endpoint: 'https://analytics.example.com', ingestKey: 'ВАШ_КЛЮЧ_ОТПРАВКИ', appVersion: '1.0.0' });
 ```
 
-Локальный npm-пакет для сборщика сайта:
+Для сборщика сайта после публикации установите пакет из npm.
+
+```bash
+npm install @semiys/ulsa-tracker@0.1.1
+```
+
+Для работы с исходниками можно установить пакет из локальной папки.
 
 ```bash
 npm install /путь/к/UlsaTrackerStyle-SDK/sdk/js
@@ -42,7 +48,7 @@ npm install /путь/к/UlsaTrackerStyle-SDK/sdk/js
 import { createTracker } from '@semiys/ulsa-tracker';
 ```
 
-Пакет не опубликован в npm. Настройка `private: true` защищает от случайной публикации. Установка по имени из публичного реестра пока не заявляется. Зависимостей у SDK нет. Для локального HTTP явно задайте `allowHttp: true`; для публичного сайта используйте HTTPS. CSP сайта должен разрешать скрипт и запросы к вашему адресу аналитики.
+Зависимостей у SDK нет. Для локального HTTP явно задайте `allowHttp: true`. Для публичного сайта используйте HTTPS. CSP сайта должен разрешать скрипт и запросы к вашему адресу аналитики. Лицензия SDK приведена в [LICENSE](LICENSE).
 
 ## 3. Отмечайте события
 

@@ -5,6 +5,14 @@
   "type": "module",
   "exports": { ".": "./index.mjs", "./browser": "./ulsa-tracker.js" },
   "files": ["index.mjs", "ulsa-tracker.js", "README.md"],
-  "repository": "https://github.com/Semiys/UlsaTrackerStyle-SDK",
-  "private": true
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Semiys/UlsaTrackerStyle-SDK.git",
+    "directory": "sdk/js"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
 }
