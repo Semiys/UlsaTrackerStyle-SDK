@@ -1,10 +1,11 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, randomUUID, createHash, createHmac, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import { chmodSync, openSync, closeSync } from 'node:fs';
+import { chmodSync, openSync, closeSync, readFileSync } from 'node:fs';
 import { ApiError } from './errors.js';
 
 const scrypt = promisify(scryptCallback);
+const accountSchema = readFileSync(new URL('./migrations/accounts-baseline.sql', import.meta.url), 'utf8');
 export const digest = value => createHash('sha256').update(value).digest('hex');
 const id = prefix => prefix + randomUUID().replaceAll('-', '');
 const token = () => randomBytes(32).toString('base64url');
@@ -18,32 +19,25 @@ export class AccountStore {
   constructor(path) {
     if (path !== ':memory:') { closeSync(openSync(path, 'a', 0o600)); chmodSync(path, 0o600); }
     this.db = new DatabaseSync(path);
-    this.db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
-      CREATE TABLE IF NOT EXISTS metadata_version (version INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS settings (name TEXT PRIMARY KEY, value TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS owners (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL, salt TEXT NOT NULL, created_at INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES owners(id),
-        csrf TEXT NOT NULL, expires_at INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES owners(id),
-        name TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS applications (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id),
-        name TEXT NOT NULL, platform TEXT NOT NULL, identifier TEXT NOT NULL, created_at INTEGER NOT NULL, deleting_at INTEGER);
-      CREATE TABLE IF NOT EXISTS ingest_keys (id TEXT PRIMARY KEY, app_id TEXT NOT NULL REFERENCES applications(id),
-        hash TEXT NOT NULL UNIQUE, display TEXT NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
-      CREATE TABLE IF NOT EXISTS grafana_owners (owner_id TEXT PRIMARY KEY REFERENCES owners(id), org_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL);
-      CREATE INDEX IF NOT EXISTS projects_owner ON projects(owner_id);
-      CREATE INDEX IF NOT EXISTS apps_project ON applications(project_id);
-      CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires_at);`);
-    const version = this.db.prepare('SELECT version FROM metadata_version').all();
-    if (!version.length) this.db.prepare('INSERT INTO metadata_version VALUES (2)').run();
-    else if (version.length === 1 && version[0].version === 1) {
-      try { this.transaction(() => {
-        this.db.exec('ALTER TABLE applications ADD COLUMN deleting_at INTEGER');
-        this.db.exec('UPDATE metadata_version SET version=2');
-      }); } catch (error) { this.db.close(); throw error; }
-    } else if (version.length !== 1 || version[0].version !== 2) { this.db.close(); throw new Error('Unsupported account database schema'); }
+    this.db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
+    try {
+      this.transaction(() => {
+        const tracked = this.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='metadata_version'").get();
+        const version = tracked ? this.db.prepare('SELECT version FROM metadata_version').all() : [];
+        if (!version.length) {
+          this.db.exec(accountSchema);
+          this.db.prepare('INSERT INTO metadata_version VALUES (2)').run();
+        } else if (version.length === 1 && version[0].version === 1) {
+          this.db.exec('ALTER TABLE applications ADD COLUMN deleting_at INTEGER');
+          this.db.exec('UPDATE metadata_version SET version=2');
+        } else if (version.length !== 1 || version[0].version !== 2) {
+          throw new Error('Unsupported account database schema');
+        }
+      });
+    } catch (error) {
+      this.db.close();
+      throw error;
+    }
     this.db.prepare('INSERT OR IGNORE INTO settings VALUES (?, ?)').run('master_secret', token());
     this.secret = this.db.prepare('SELECT value FROM settings WHERE name=?').get('master_secret').value;
     this.passwordWork = 0;

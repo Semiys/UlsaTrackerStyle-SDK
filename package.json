@@ -1,6 +1,6 @@
 {
   "name": "ulsa-tracker-style-sdk",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "private": true,
   "type": "module",
   "description": "UlsaTrackerStyle SDK — сервис продуктовой аналитики для мобильных приложений",
@@ -19,10 +19,11 @@
     "node": ">=24.21.0 <25"
   },
   "dependencies": {
-    "express": "5.2.1",
-    "ejs": "7.0.1",
     "@clickhouse/client": "1.12.0",
-    "@prometheus-io/client": "0.16.1"
+    "@prometheus-io/client": "0.16.1",
+    "ejs": "7.0.1",
+    "express": "5.2.1",
+    "umzug": "3.8.2"
   },
   "optionalDependencies": {
     "@duckdb/node-api": "1.5.6-r.1"

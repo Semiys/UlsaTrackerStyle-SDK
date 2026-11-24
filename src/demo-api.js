@@ -1,8 +1,10 @@
 import { Router, json } from 'express';
-import { randomUUID, randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
+import { randomUUID, randomBytes, createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { validateBatch } from './events.js';
 import { ApiError } from './errors.js';
 import { SERVER_VERSION } from './version.js';
+
+const categories = new Set(['uncategorized', 'navigation', 'interaction']);
 
 export function demoApiRouter({config,store,metrics}) {
   const router=Router(),secret=randomBytes(32);
@@ -22,6 +24,15 @@ export function demoApiRouter({config,store,metrics}) {
     if(!/^[a-f0-9]{64}$/.test(token)||!timingSafeEqual(Buffer.from(token),Buffer.from(expected)))throw new ApiError(403,'invalid_form','Форма устарела. Откройте её заново. Событие не сохранено.');
     const name=scalar(req.body,'name').trim(),detail=scalar(req.body,'detail').trim();
     const events=validateBatch({schemaVersion:1,events:[{eventId:scalar(req.body,'eventId'),sessionId:scalar(req.body,'sessionId'),occurredAt:scalar(req.body,'occurredAt'),name,screen:scalar(req.body,'screen').trim()||null,platform:'web',appVersion:SERVER_VERSION,properties:detail?{[name==='button_click'?'button':name==='action_success'?'action':'detail']:detail}:{}}]});
+    const category = req.body.category ?? 'uncategorized';
+    if (!categories.has(category)) {
+      throw new ApiError(400, 'invalid_category', 'Выберите категорию из списка.', 'category');
+    }
+    if (category !== 'uncategorized') {
+      const [event] = events;
+      event.category = category;
+      event.payloadHash = createHash('sha256').update(JSON.stringify([event.payloadHash, category])).digest('hex');
+    }
     const result=await store.ingest(config.projectId,events);metrics?.ingested(result);
     res.json({eventId:events[0].eventId,...result});
   });

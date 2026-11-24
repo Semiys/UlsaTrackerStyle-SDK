@@ -4,6 +4,11 @@ body { display:block; }
 .app-header .page-nav { display:flex; }
 .app-header .select-wrap { min-width:150px; }
 .app-footer { margin-top:48px; padding:24px 0; border-top:1px solid var(--border); }
+.recent-events-scroll { overflow-x:auto; }
+.recent-events { width:100%; border-collapse:collapse; text-align:left; }
+.recent-events :is(th,td) { padding:10px 12px; border-bottom:1px solid var(--border); }
+.recent-events th { white-space:nowrap; }
+.recent-events tr[data-saved="true"] { background:var(--input-background); }
 fieldset { border:0; padding:0; margin:0; min-width:0; display:contents; }
 .console-form fieldset { display:grid; gap:20px; }
 .console-form .select-wrap { display:grid; gap:8px; }
