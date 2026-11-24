@@ -3,6 +3,10 @@ CREATE TABLE IF NOT EXISTS schema_version (
     version UInt32
 ) ENGINE = ReplacingMergeTree ORDER BY id;
 
+INSERT INTO schema_version (id, version)
+SELECT toUInt8(1), toUInt32(1)
+WHERE NOT EXISTS (SELECT 1 FROM schema_version);
+
 CREATE TABLE IF NOT EXISTS events (
     project_id String,
     event_id UUID,

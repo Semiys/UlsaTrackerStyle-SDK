@@ -96,7 +96,10 @@ FROM lab4 AS lab5
 ENV LAB_IMAGE_VERSION=0.0.5 METRICS_ENABLED=1 METRICS_PORT=9100
 EXPOSE 9100
 
-FROM lab5 AS runtime
+FROM lab5 AS lab6
+ENV LAB_IMAGE_VERSION=0.0.6
+
+FROM lab6 AS runtime
 
 
 # Current product/monitoring release. Reproduce historical labs from their tagged source.

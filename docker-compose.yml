@@ -2,14 +2,14 @@ name: mispisit-sarantsev
 
 services:
   app:
-    image: semiys/ulsatrackerstyle-sdk:0.0.5
+    image: semiys/ulsatrackerstyle-sdk:0.0.6
     ports:
       - "3000:3000"
     environment: {PORT: "8080", METRICS_ENABLED: "1", METRICS_PORT: "9100", CONSOLE_ENABLED: "1",
       PUBLIC_URL: http://localhost:8080, FRONTEND_INTERNAL_URL: http://frontend:8080,
       REVERSE_PROXY_HOPS: "1", GRAFANA_INTERNAL_URL: http://dashboard:3000, GRAFANA_ADMIN_USER: app,
       GRAFANA_ADMIN_PASSWORD: app, STORAGE_BACKEND: clickhouse, DEMO_MODE: "1",
-      LAB_IMAGE_VERSION: 0.0.5, DATABASE_URL: http://db:8123, DATABASE_USER: app,
+      LAB_IMAGE_VERSION: 0.0.6, DATABASE_URL: http://db:8123, DATABASE_USER: app,
       DATABASE_PASSWORD: app, DATABASE_NAME: app, DASHBOARD_PROVIDER: grafana,
       DASHBOARD_PUBLIC_URL: http://localhost:3000}
     volumes:
@@ -23,9 +23,9 @@ services:
     mem_limit: 256m
     cpus: 1
   db:
-    image: clickhouse/clickhouse-server:26.8.26.12
+    image: &lab6_database_image clickhouse/clickhouse-server:26.8.26.12
     stop_grace_period: 60s
-    environment: {CLICKHOUSE_DB: app, CLICKHOUSE_USER: app, CLICKHOUSE_PASSWORD: app,
+    environment: &lab6_database_environment {CLICKHOUSE_DB: app, CLICKHOUSE_USER: app, CLICKHOUSE_PASSWORD: app,
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"}
     volumes:
       - dbdata:/var/lib/clickhouse
@@ -35,6 +35,32 @@ services:
       interval: 2s, timeout: 3s, retries: 30, start_period: 5s}
     mem_limit: 1g
     cpus: 2
+
+  backup:
+    image: *lab6_database_image
+    profiles: [tools]
+    user: "0:0"
+    environment: *lab6_database_environment
+    entrypoint: ["/bin/sh", "/opt/lab6-database.sh"]
+    command: ["backup"]
+    volumes:
+      - ./scripts/lab6-database.sh:/opt/lab6-database.sh:ro
+      - ./backup:/backup
+    depends_on:
+      db: {condition: service_healthy}
+
+  restore:
+    image: *lab6_database_image
+    profiles: [tools]
+    user: "0:0"
+    environment: *lab6_database_environment
+    entrypoint: ["/bin/sh", "/opt/lab6-database.sh"]
+    command: ["restore"]
+    volumes:
+      - ./scripts/lab6-database.sh:/opt/lab6-database.sh:ro
+      - ./backup:/backup:ro
+    depends_on:
+      db: {condition: service_healthy}
 
   dashboard:
     image: grafana/grafana:11.4.0
@@ -66,7 +92,7 @@ services:
     cpus: 1
 
   frontend:
-    image: semiys/ulsatrackerstyle-frontend:0.0.5
+    image: semiys/ulsatrackerstyle-frontend:0.0.6
     ports: ["8080:8080"]
     environment: {API_UPSTREAM: "http://app:8080", PUBLIC_URL: "http://localhost:8080"}
     depends_on:

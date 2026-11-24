@@ -3,6 +3,7 @@ import { setTimeout as wait } from 'node:timers/promises';
 import { createClient } from '@clickhouse/client';
 import { ApiError } from './errors.js';
 import { CSV_ROW_LIMIT, CSV_BYTE_LIMIT } from './analytics-export.js';
+import { migrateClickHouse } from './migrations/clickhouse.js';
 
 const statisticsQuery = await readFile(new URL('./clickhouse-statistics.sql', import.meta.url), 'utf8');
 
@@ -20,11 +21,7 @@ export class ClickHouseAnalyticsStore {
       clickhouse_settings: { max_threads: 2, date_time_input_format: 'best_effort', async_insert: 0 } });
     const store = new ClickHouseAnalyticsStore(client);
     try {
-      const schema = await readFile(new URL('./clickhouse-schema.sql', import.meta.url), 'utf8');
-      for (const query of schema.split(';').map(s => s.trim()).filter(Boolean)) await client.command({ query });
-      const versions = await store.rows('SELECT version FROM schema_version FINAL');
-      if (!versions.length) await client.insert({ table: 'schema_version', values: [{ id: 1, version: 1 }], format: 'JSONEachRow' });
-      else if (versions.length !== 1 || Number(versions[0].version) !== 1) throw new Error('Unsupported analytics database schema');
+      await migrateClickHouse(client);
       return store;
     } catch (error) { await client.close(); throw error; }
   }
@@ -129,7 +126,8 @@ export class ClickHouseAnalyticsStore {
       await this.client.insert({ table: 'events', format: 'JSONEachRow',
         values: fresh.map(event => ({ project_id: projectId, event_id: event.eventId, session_id: event.sessionId,
           occurred_at: event.occurredAt, name: event.name, screen: event.screen, platform: event.platform,
-          app_version: event.appVersion, properties: JSON.stringify(event.properties), payload_hash: event.payloadHash, received_at: facts.get(event.eventId).receivedAt })),
+          app_version: event.appVersion, properties: JSON.stringify(event.properties), payload_hash: event.payloadHash,
+          received_at: facts.get(event.eventId).receivedAt, category: event.category ?? 'uncategorized' })),
         clickhouse_settings: { async_insert: 0, input_format_parallel_parsing: 0, max_insert_block_size: 1000 },
       });
     }
@@ -253,7 +251,7 @@ export class ClickHouseAnalyticsStore {
     return this.execute(async () => {
       const rows = await this.rows(`SELECT toString(event_id) AS eventId, toString(session_id) AS sessionId,
         toUnixTimestamp64Milli(occurred_at) AS occurredMs, toUnixTimestamp64Milli(received_at) AS receivedMs,
-        name, screen, platform, app_version AS appVersion, properties FROM events FINAL
+        name, screen, platform, app_version AS appVersion, properties, category FROM events FINAL
         WHERE project_id = {project:String} ORDER BY received_at DESC, event_id LIMIT {limit:UInt32}`,
       { project: projectId, limit });
       return rows.map(({ occurredMs, receivedMs, properties, ...event }) => ({ ...event,

@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { Form, Notice, Select } from './components';
 import { request, RequestError } from './api';
 import { useResource, useSession } from './main';
+import { eventCategories } from './event-category';
 
 type Identity = {eventId:string;sessionId:string;occurredAt:string;csrfToken:string};
 type Receipt = {eventId:string;eventName:string;observedAt:string;status:string};
@@ -16,6 +17,7 @@ export function DemoFrame() {
 }
 export function DemoEventForm() {
   const data=useResource<Identity>('/form','demo'),navigate=useNavigate(),location=useLocation();
+  const [category,setCategory]=useState('uncategorized');
   const invalid=new URLSearchParams(location.search).get('example')==='invalid';
   if(!data.data)return <section><h1>Отправить событие</h1>{data.error?<><Notice error>{data.error}</Notice><button className="button" onClick={data.retry}>Повторить</button></>:<p role="status">Подготавливаем форму…</p>}</section>;
   const identity=data.data;
@@ -26,6 +28,7 @@ export function DemoEventForm() {
     }}>
       <label>Название события<input name="name" defaultValue={invalid?'':'button_click'} maxLength={64} autoComplete="off" /></label><p className="muted small">Например, button_click или screen_view. Пустое название сервер отклонит.</p>
       <label>Экран<input name="screen" defaultValue="collection" maxLength={64} autoComplete="off" /></label><label>Кнопка или действие<input name="detail" defaultValue="open_filters" maxLength={256} autoComplete="off" /></label>
+      <Select label="Категория" name="category" options={eventCategories} value={category} onChange={setCategory} />
       <button className="button" type="submit">Сохранить событие</button>
     </Form><details className="guide-details"><summary>Идентификатор этой записи</summary><code>{identity.eventId}</code><p className="muted small">При повторной отправке той же формы запись учитывается один раз.</p></details>
   </section>;

@@ -61,7 +61,8 @@ test('Grafana opens a provisioned dashboard anonymously, with the fixed ClickHou
   const response = await fetch(appUrl + '/dashboard');
   const html = await response.text();
   assert.match(html, /grafana-frame/);
-  assert.ok(html.includes('Сборка ' + (process.env.EXPECTED_DASHBOARD_TITLE?.split(' ').at(-1) ?? '0.0.4')));
+  const buildVersion = process.env.EXPECTED_APP_BUILD_VERSION ?? process.env.EXPECTED_DASHBOARD_TITLE?.split(' ').at(-1) ?? '0.0.4';
+  assert.ok(html.includes('Сборка ' + buildVersion));
   assert.doesNotMatch(html, /daily-chart/);
   assert.ok(response.headers.get('content-security-policy').includes('frame-src ' + (process.env.EXPECTED_FRAME_ORIGIN ?? 'http://localhost:13000')));
   const embedded = await fetch(grafanaUrl + '/d/ulsatracker/events');

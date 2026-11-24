@@ -4,6 +4,7 @@ import { request } from './api';
 import { Notice } from './components';
 import { useResource } from './main';
 import type { Application, Selection } from './types';
+import { categoryLabel } from './event-category';
 import { PRESETS, readSelection, resolveRange, rangeQuery, rangeLabel, formatLocal, parseLocal, validateRange, browserTimeZone, timeZoneLabel, dayStart, addDays, monthStart, addMonth, monthCells } from '../../public/date-range.js';
 
 const presets = PRESETS as { id: string; label: string; duration: number | null }[];
@@ -81,6 +82,33 @@ function ExportDialog({ scopeBase, selection }: { scopeBase: string; selection: 
       <p className="muted small">До 10 000 записей и 8 МиБ. {format === 'json' ? 'JSON сохраняет структуру и типы значений.' : 'CSV открывается в табличных редакторах.'}</p><p className="export-status" role="status">{status}</p><button className="button secondary" onClick={close}>{busy ? 'Отменить скачивание' : 'Закрыть'}</button>
     </dialog></>;
 }
+type RecentEvent = { eventId: string; name: string; category?: string; receivedAt: string };
+
+function RecentDemoEvents() {
+  const { data, error, retry } = useResource<{ events: RecentEvent[] }>('/recent', 'demo');
+  const [params] = useSearchParams();
+  const saved = params.get('saved');
+  return <section className="panel" aria-labelledby="recent-events-title">
+    <div className="page-actions">
+      <h2 id="recent-events-title">Последние записи</h2>
+      <button type="button" className="button secondary" onClick={retry}>Обновить записи</button>
+    </div>
+    {error ? <Notice error>{error}</Notice> : !data ? <p role="status">Загружаем список…</p>
+      : !data.events.length ? <p>События ещё не сохранены.</p> : (
+        <div className="recent-events-scroll">
+          <table className="recent-events">
+            <thead><tr><th scope="col">Событие</th><th scope="col">Категория</th>
+              <th scope="col">Идентификатор</th><th scope="col">Принято сервером</th></tr></thead>
+            <tbody>{data.events.map(event => <tr key={event.eventId} data-saved={saved === event.eventId}>
+              <td>{event.name}</td><td>{categoryLabel(event.category)}</td><td><code>{event.eventId}</code></td>
+              <td><time dateTime={event.receivedAt}>{new Date(event.receivedAt).toLocaleString('ru-RU')}</time></td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+      )}
+  </section>;
+}
+
 export function Statistics({ demo = false }: { demo?: boolean }) {
   const location = useLocation(), appId = location.pathname.split('/')[3];
   const scopeBase = demo ? '/dashboard' : '/console/apps/' + appId;
@@ -125,6 +153,7 @@ export function Statistics({ demo = false }: { demo?: boolean }) {
   if (!data.data) return data.error ? <Notice error>{data.error}</Notice> : <p role="status">Загружаем статистику…</p>;
   const a = data.data.application, full = frameUrl ? new URL(frameUrl) : null; full?.searchParams.delete('kiosk');
   return <div className="grafana-main"><section className="stats-header"><div><p className="eyebrow">{a.project_name}</p><h1>{a.name}</h1><p className="muted">Статистика приложения · местное время</p></div><div className="controls">{demo ? <Link className="button secondary" to="/system-state">Состояние системы</Link> : <Link className="button secondary" to={'/console/apps/' + a.id}>Подключение</Link>}<ExportDialog scopeBase={scopeBase} selection={selection} /><button className="button secondary" onClick={() => { if (frame.current && frameUrl) { setStatus('Обновляем панель…'); frame.current.src = frameUrl; } setTick(v => v + 1); }}>Обновить панель</button>{full && <a className="button secondary" href={full.href} target="_blank" rel="noopener">На весь экран</a>}</div></section>
+    {demo && <RecentDemoEvents />}
     <PeriodPicker value={selection} onApply={apply} />
     <p className="muted small">{all(selection) ? 'Показана вся сохранённая история. До начала этой истории предыдущий период не содержит событий.' : 'Сравнение показывает предыдущий отрезок той же длительности.'} Переходы учитываются внутри одной сессии. Сессии не равны числу уникальных пользователей.</p>
     {status && <p className="muted small frame-error" role="status">{status}</p>}

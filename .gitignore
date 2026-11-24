@@ -15,6 +15,7 @@ local.properties
 *.pem
 
 # Analytics data and runtime output
+/backup/
 data/
 *.duckdb
 *.duckdb.wal
