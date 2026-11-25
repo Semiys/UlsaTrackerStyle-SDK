@@ -38,6 +38,9 @@ test('public guide has working section links, escaped examples and no credential
   }
   assert.match(html, /&lt;script src=/);
   assert.match(html, /data-copy="guide-application"/);
+  assert.match(html, /mavenCentral\(\)/);
+  assert.match(html, /npm install @semiys\/ulsa-tracker@0\.1\.1/);
+  assert.doesNotMatch(html, /includeBuild|ulsaTracker\.sdkPath/);
   assert.ok(html.includes('src="/console.js"')); // Copy works even without the account console.
   for (const key of [f.config.ingestKey, f.config.readKey]) assert.equal(html.includes(key), false);
   assert.equal(html.includes('href="/register"'), false);
@@ -68,6 +71,7 @@ test('guide keeps account navigation and is linked from a newly created Android 
     const html = await created.text();
     assert.ok(html.includes(`href="/guide#${anchor}"`));
     assert.match(html, /Пошаговая инструкция/);
+    assert.match(html, platform === 'android' ? /tracker:0\.2\.0/ : /npm install @semiys\/ulsa-tracker@0\.1\.1/);
   }
 });
 
@@ -104,7 +108,9 @@ test('HTTPS guide avoids local-only HTTP opt-ins and Android initialisation happ
   assert.equal((examples.application.match(/createAndroidTracker\(/g) ?? []).length, 1);
   assert.match(examples.application, /class AnalyticsApplication : Application/);
   assert.match(examples.compose, /LaunchedEffect\(tracker\)/);
-  assert.match(examples.settings, /includeBuild/);
+  assert.match(examples.settings, /mavenCentral\(\)/);
+  assert.doesNotMatch(examples.settings + examples.prepared, /includeBuild|ulsaTracker\.sdkPath/);
+  assert.match(examples.module, /import \{ createTracker \} from '@semiys\/ulsa-tracker'/);
   assert.match(examples.dependency, /tracker:0\.2\.0/);
 });
 

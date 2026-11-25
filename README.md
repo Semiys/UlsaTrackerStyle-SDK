@@ -2,6 +2,8 @@
 
 Сервис продуктовой аналитики для мобильных приложений. SDK отправляет события об открытии экранов, нажатиях кнопок и успешных действиях; сервер сохраняет их, а веб-панель показывает счётчики и графики. Первый клиент — **«Дом Коллекционера»**, Android/KMP.
 
+[Подключение Android, JVM и JavaScript SDK](#подключение-sdk)
+
 ## Что умеет система
 
 - Кабинет с регистрацией и входом, проектами, приложениями и отдельными ключами отправки.
@@ -258,7 +260,16 @@ Pull Request ЛР2: [https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/1](http
 
 ## Состояние разработки
 
-Сервер из текущих исходников — **0.12.2**, опубликованный выпуск продукта — **0.12.1**, образ ЛР4 — **0.0.4**, Kotlin SDK для Android/JVM — **0.2.0**, JavaScript SDK — **0.1.1**. Обе SDK используют прежний HTTP-контракт v1. Локально доступны Gradle composite build, JS-скрипт, ES module и npm-пакет из исходников. [Порядок публикации в Maven Central и npm](docs/SDK_PUBLISHING.md).
+Сервер из текущих исходников — **0.12.2**, опубликованный выпуск продукта — **0.12.1**.
+
+## Подключение SDK
+
+Клиентские SDK используют HTTP-контракт v1 и устанавливаются отдельно от Docker-образов.
+
+- **Android и JVM** — подключите `mavenCentral()` и добавьте `implementation("io.github.semiys.ulsatracker:tracker:0.2.0")`. [Инструкция Kotlin](sdk/kotlin/README.md#подключение-из-maven-central) · [Maven Central](https://repo.maven.apache.org/maven2/io/github/semiys/ulsatracker/tracker/0.2.0/)
+- **JavaScript** — выполните `npm install @semiys/ulsa-tracker@0.1.1`. [Инструкция JavaScript](sdk/js/README.md) · [npm](https://www.npmjs.com/package/@semiys/ulsa-tracker/v/0.1.1)
+
+[Как выпустить следующую версию SDK](docs/SDK_PUBLISHING.md).
 
 События хранятся в ClickHouse, учётные записи и настройки кабинета — в SQLite из Node.js. Сейчас работает один процесс приёма. Горизонтальное масштабирование, восстановление пароля и подтверждение почты ещё не реализованы; учебный Compose не является готовой конфигурацией публичного SaaS. Фотографии, содержимое коллекции, поля форм и рекламные ID автоматически не собираются.
 

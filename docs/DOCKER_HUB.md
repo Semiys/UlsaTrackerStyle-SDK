@@ -116,7 +116,7 @@ Pull Request ЛР2: [https://github.com/Semiys/UlsaTrackerStyle-SDK/pull/1](http
 
 ## Состояние SDK и хранения
 
-Kotlin SDK 0.2.0 реализована для Android и JVM: постоянная очередь, пакетная отправка, повторы и подтверждения. Демонстрационный APK 1.3 передаётся отдельно. JavaScript SDK 0.1.0 доступна в выпуске 0.0.4 как script/ES module/локальный пакет; iOS запланирован. Публикация Maven/npm пока не выполнена.
+Для новых подключений доступны Kotlin SDK 0.2.0 для Android и JVM и JavaScript SDK 0.1.1. Установите библиотеки из реестров. [Maven Central](https://repo.maven.apache.org/maven2/io/github/semiys/ulsatracker/tracker/0.2.0/), [npm](https://www.npmjs.com/package/@semiys/ulsa-tracker/v/0.1.1)
 
 ЛР2 хранит события в JSON: предел 10 000 событий или 16 МиБ. Реализация DuckDB сохранена в исходниках для следующих этапов; пакет DuckDB в образ ЛР2 не включён. Фотографии, содержимое коллекции, пользовательский ввод и рекламные ID SDK не собирает.
 

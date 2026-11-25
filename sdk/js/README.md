@@ -8,44 +8,41 @@
 
 ## 2. Подключите одним из способов
 
-Обычный HTML:
-
-```html
-<script src="https://analytics.example.com/sdk/ulsa-tracker.js"></script>
-<script>
-const tracker = UlsaTracker.create({
-  endpoint: 'https://analytics.example.com',
-  ingestKey: 'ВАШ_КЛЮЧ_ОТПРАВКИ',
-  appVersion: '1.0.0'
-});
-tracker.screen('home');
-document.querySelector('#save').addEventListener('click', () => {
-  tracker.click('save', 'home');
-});
-</script>
-```
-
-ES module из развёрнутого сервиса:
-
-```javascript
-import { createTracker } from 'https://analytics.example.com/sdk/index.mjs';
-const tracker = createTracker({ endpoint: 'https://analytics.example.com', ingestKey: 'ВАШ_КЛЮЧ_ОТПРАВКИ', appVersion: '1.0.0' });
-```
-
-Для сборщика сайта после публикации установите пакет из npm.
+Для сайта со сборщиком установите пакет. [npm](https://www.npmjs.com/package/@semiys/ulsa-tracker/v/0.1.1)
 
 ```bash
 npm install @semiys/ulsa-tracker@0.1.1
 ```
 
-Для работы с исходниками можно установить пакет из локальной папки.
-
-```bash
-npm install /путь/к/UlsaTrackerStyle-SDK/sdk/js
-```
+В точке входа браузерного приложения импортируйте `createTracker`. Создайте экземпляр один раз и добавьте вызовы к экрану и кнопке.
 
 ```javascript
 import { createTracker } from '@semiys/ulsa-tracker';
+
+const tracker = createTracker({
+  endpoint: 'https://analytics.example.com',
+  ingestKey: 'ВАШ_КЛЮЧ_ОТПРАВКИ',
+  appVersion: '1.0.0'
+});
+tracker.screen('home');
+document.querySelector('#save')?.addEventListener('click', () => {
+  tracker.click('save', 'home');
+});
+```
+
+Для HTML-страницы без сборщика загрузите обычный скрипт с сервера аналитики. В своём файле `analytics.js` используйте `UlsaTracker.create()` с теми же параметрами.
+
+```html
+<button id="save" type="button">Сохранить</button>
+<script src="https://analytics.example.com/sdk/ulsa-tracker.js" defer></script>
+<script src="/analytics.js" defer></script>
+```
+
+Для браузерных ES-модулей без сборщика доступен прямой импорт с сервера.
+
+```javascript
+import { createTracker } from 'https://analytics.example.com/sdk/index.mjs';
+const tracker = createTracker({ endpoint: 'https://analytics.example.com', ingestKey: 'ВАШ_КЛЮЧ_ОТПРАВКИ', appVersion: '1.0.0' });
 ```
 
 Зависимостей у SDK нет. Для локального HTTP явно задайте `allowHttp: true`. Для публичного сайта используйте HTTPS. CSP сайта должен разрешать скрипт и запросы к вашему адресу аналитики. Лицензия SDK приведена в [LICENSE](LICENSE).

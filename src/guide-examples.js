@@ -3,13 +3,12 @@ export function guideExamples(endpoint) {
   const origin = JSON.stringify(endpoint);
   const localHttp = endpoint.startsWith('http:');
   const port = new URL(endpoint).port || (localHttp ? '80' : '443');
+  const webButton = '<button id="add-item" type="button">Добавить предмет</button>';
   return {
-    clone: 'git clone https://github.com/Semiys/UlsaTrackerStyle-SDK.git',
-    settings: `// settings.gradle.kts вашего Android-проекта
-includeBuild("../UlsaTrackerStyle-SDK/sdk/kotlin") {
-    dependencySubstitution {
-        substitute(module("io.github.semiys.ulsatracker:tracker"))
-            .using(project(":tracker"))
+    settings: `// Добавьте mavenCentral() в существующий блок repositories
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
     }
 }`,
     dependency: `// build.gradle.kts модуля приложения
@@ -79,10 +78,11 @@ setContent {
 }`,
     reverse: `adb reverse tcp:${port} tcp:${port}`,
     prepared: `# local.properties приложения с подготовленным адаптером
-ulsaTracker.sdkPath=/путь/к/UlsaTrackerStyle-SDK/sdk/kotlin
 ulsaTracker.endpoint=${endpoint}
 ulsaTracker.ingestKey=ВАШ_КЛЮЧ_ОТПРАВКИ`,
-    html: `<button id="add-item" type="button">Добавить предмет</button>
+    npmInstall: 'npm install @semiys/ulsa-tracker@0.1.1',
+    webButton,
+    html: `${webButton}
 <script src="${endpoint}/sdk/ulsa-tracker.js" defer></script>
 <script src="/analytics.js" defer></script>`,
     javascript: `// analytics.js — отдельный файл вашего сайта
@@ -97,14 +97,17 @@ document.getElementById('add-item').addEventListener('click', () => {
   tracker.click('add_item', 'home');
   // Выполните обычное действие кнопки вашего сайта.
 });`,
-    module: `import { createTracker } from '${endpoint}/sdk/index.mjs';
+    module: `import { createTracker } from '@semiys/ulsa-tracker';
 
 const tracker = createTracker({
   endpoint: ${origin},
   ingestKey: 'ВАШ_КЛЮЧ_ОТПРАВКИ',
   appVersion: '1.0.0'${localHttp ? ',\n  allowHttp: true // только локальная разработка' : ''}
 });
-tracker.screen('home');`,
+tracker.screen('home');
+document.getElementById('add-item').addEventListener('click', () => {
+  tracker.click('add_item', 'home');
+});`,
     successAndroid: `// Выполните после подтверждённого сохранения в вашем приложении:
 tracker.track(
     name = "action_success",

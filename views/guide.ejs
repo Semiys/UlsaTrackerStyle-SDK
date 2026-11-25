@@ -8,7 +8,7 @@
       <% if (consoleEnabled) { %><a class="button" href="<%= currentUser ? '/console' : '/register' %>"><%= currentUser ? 'Открыть мои проекты' : 'Создать аккаунт' %></a><% } %>
       <a class="button secondary" href="#android">Подключить Android</a><a class="button secondary" href="#javascript">Подключить сайт</a>
     </div>
-    <p class="muted small guide-version">Kotlin SDK 0.2.0 · JavaScript SDK 0.1.0 · Android 8.0 и новее. Готового адаптера iOS пока нет.</p>
+    <p class="muted small guide-version">Kotlin SDK 0.2.0 для Android и JVM. JavaScript SDK 0.1.1 для сайтов.</p>
   </section>
 
   <div class="guide-layout">
@@ -46,34 +46,34 @@
 
       <section class="guide-section" id="android">
         <p class="eyebrow">Android · Kotlin SDK 0.2.0</p><h2>Подключите Android-приложение</h2>
-        <p>Поддерживается Android API 26+. Для сборки текущих исходников SDK используются JDK 21, Android SDK 37, Kotlin 2.4.0 и AGP 9.1.1. Библиотека ещё не опубликована в Maven: пока подключается локальный модуль исходников.</p>
-        <h3>1. Получите исходники SDK</h3><p>Склонируйте репозиторий рядом с папкой своего Android-проекта или скачайте его средствами GitHub. Следующий пример предполагает, что папки вашего приложения и <code>UlsaTrackerStyle-SDK</code> находятся рядом.</p>
-        <%- include('partials/guide-code', { id: 'guide-clone', label: 'Терминал', source: examples.clone }) %>
-        <div class="page-actions"><a class="button secondary" href="https://github.com/Semiys/UlsaTrackerStyle-SDK" target="_blank" rel="noopener noreferrer">Открыть исходники SDK</a></div>
-        <h3>2. Подключите Gradle-модуль</h3><p>Добавьте блоки в указанные файлы своего проекта. Если SDK находится в другом месте, замените путь в <code>includeBuild</code>.</p>
+        <p>Поддерживается Android API 26+.</p>
+        <h3>1. Установите SDK из Maven Central</h3><p>Добавьте <code>mavenCentral()</code> в репозитории зависимостей Gradle и укажите зависимость в модуле приложения. Затем выполните Gradle Sync.</p>
         <%- include('partials/guide-code', { id: 'guide-settings', label: 'settings.gradle.kts · корень Android-проекта', source: examples.settings }) %>
         <%- include('partials/guide-code', { id: 'guide-dependency', label: 'build.gradle.kts · модуль приложения', source: examples.dependency }) %>
-        <p class="muted small">В <code>sdk/kotlin/local.properties</code> исходников SDK укажите <code>sdk.dir</code> с путём к Android SDK на вашем компьютере. Composite build не наследует этот путь из приложения. Затем выполните Gradle Sync.</p>
-        <h3>3. Создайте один экземпляр в Application</h3><p>Ниже полный пример нового класса. Замените package, ключ и endpoint на свои. Если у приложения уже есть собственный класс <code>Application</code>, перенесите инициализацию в него и используйте его существующий экземпляр SDK.</p>
+        <h3>2. Создайте один экземпляр в Application</h3><p>Замените package, ключ и endpoint на свои. Если у приложения уже есть класс <code>Application</code>, добавьте инициализацию в него.</p>
         <%- include('partials/guide-code', { id: 'guide-application', label: 'AnalyticsApplication.kt · пример класса', source: examples.application }) %>
         <p>В существующем manifest добавьте разрешение интернета и укажите свой класс Application. Сохраните остальные настройки и Activity; второй элемент <code>application</code> создавать не нужно.</p>
         <%- include('partials/guide-code', { id: 'guide-manifest', label: 'src/main/AndroidManifest.xml · нужные элементы', source: examples.manifest }) %>
         <% if (guideEndpoint.startsWith('http:')) { %><details class="guide-details"><summary>Локальная проверка по HTTP</summary><p>Для локального HTTP оставьте <code>allowHttp = true</code> в TrackerConfig и разрешите HTTP только в debug manifest. Для публичного сервера используйте HTTPS и уберите это разрешение.</p><%- include('partials/guide-code', { id: 'guide-debug-manifest', label: 'src/debug/AndroidManifest.xml', source: examples.debugManifest }) %></details><% } %>
-        <h3>4. Отмечайте посещения и нажатия</h3><p>Пример для проекта с уже включённым Jetpack Compose и подключённым Material 3. Посещение отмечается в <code>LaunchedEffect</code>, а клик — в обработчике кнопки. Вызов в теле composable повторялся бы при перерисовках.</p>
+        <h3>3. Отмечайте посещения и нажатия</h3><p>Пример для проекта с уже включённым Jetpack Compose и подключённым Material 3. Посещение отмечается в <code>LaunchedEffect</code>, а клик — в обработчике кнопки. Вызов в теле composable повторялся бы при перерисовках.</p>
         <%- include('partials/guide-code', { id: 'guide-compose', label: 'HomeScreen.kt · пример Compose', source: examples.compose }) %>
         <%- include('partials/guide-code', { id: 'guide-activity', label: 'ComponentActivity · фрагмент существующего onCreate', source: examples.activity }) %>
         <p>В обычном Android-интерфейсе вызывайте те же <code>tracker.screen</code> и <code>tracker.click</code> в обработчиках своего экрана. Добавляйте вызов в каждую нужную кнопку; автоматического сбора всех касаний здесь нет.</p>
-        <details class="guide-details"><summary>В приложении уже есть подготовленный адаптер SDK</summary><p>Если Gradle-код вашего приложения уже читает эти параметры, достаточно заполнить его локальные настройки и пересобрать APK. Не создавайте второй tracker. Эти строки не подключают SDK сами по себе — они относятся к заранее реализованному адаптеру приложения.</p><%- include('partials/guide-code', { id: 'guide-prepared', label: 'local.properties · только для подготовленного адаптера', source: examples.prepared }) %><p>Сохраните остальные строки файла и используйте свой путь к SDK. При изменении ключа или endpoint установленный APK нужно пересобрать и обновить.</p></details>
+        <details class="guide-details"><summary>В приложении уже есть подготовленный адаптер SDK</summary><p>Если Gradle-код приложения читает эти параметры, заполните его локальные настройки и пересоберите debug APK.</p><%- include('partials/guide-code', { id: 'guide-prepared', label: 'local.properties · только для подготовленного адаптера', source: examples.prepared }) %><p>Сохраните остальные строки файла. При изменении ключа или адреса сервера пересоберите и обновите APK.</p></details>
         <div class="page-actions"><a class="button secondary" href="#verify">Проверить Android-событие</a></div>
       </section>
 
       <section class="guide-section" id="javascript">
-        <p class="eyebrow">Web · JavaScript SDK 0.1.0</p><h2>Подключите сайт</h2>
-        <ol class="guide-steps"><li>Создайте Web-приложение в кабинете и укажите точный origin сайта, на котором будет выполняться этот код.</li><li>Добавьте SDK и свой файл <code>analytics.js</code> на страницу. Идентификатор тестовой кнопки можно заменить на идентификатор вашей кнопки.</li><li>В <code>analytics.js</code> подставьте ключ и адрес сервера, затем откройте страницу сайта.</li></ol>
-        <%- include('partials/guide-code', { id: 'guide-html', label: 'HTML-страница вашего сайта', source: examples.html }) %>
-        <%- include('partials/guide-code', { id: 'guide-javascript', label: 'analytics.js · файл вашего сайта', source: examples.javascript }) %>
+        <p class="eyebrow">Web · JavaScript SDK 0.1.1</p><h2>Подключите сайт</h2>
+        <p>Укажите в кабинете точный origin страницы. Для проекта со сборщиком установите пакет из npm и добавьте пример в точку входа, которая запускается после появления кнопки.</p>
+        <%- include('partials/guide-code', { id: 'guide-npm', label: 'Терминал · npm', source: examples.npmInstall }) %>
+        <%- include('partials/guide-code', { id: 'guide-web-button', label: 'HTML · кнопка', source: examples.webButton }) %>
+        <%- include('partials/guide-code', { id: 'guide-module', label: 'JavaScript · импорт из npm', source: examples.module }) %>
+        <details class="guide-details"><summary>Подключение без сборщика</summary><p>Для обычной HTML-страницы используйте скрипт с сервера аналитики и свой файл <code>analytics.js</code>.</p>
+          <%- include('partials/guide-code', { id: 'guide-html', label: 'HTML-страница', source: examples.html }) %>
+          <%- include('partials/guide-code', { id: 'guide-javascript', label: 'analytics.js', source: examples.javascript }) %>
+        </details>
         <p class="muted small">Проверьте правила CSP своего сайта: они должны разрешать загрузку SDK и запросы к серверу аналитики. На HTTPS-сайте подключайте сервер по HTTPS. Содержимое форм, URL и все клики автоматически не собираются.</p>
-        <details class="guide-details"><summary>Альтернатива: ES module</summary><p>Этот вариант заменяет подключение обычного скрипта. Используйте его в модуле своего сайта; не создавайте два tracker для одного подключения.</p><%- include('partials/guide-code', { id: 'guide-module', label: 'JavaScript module', source: examples.module }) %><p>Локальный npm-пакет находится в <code>sdk/js</code> репозитория. Публикации в публичном npm пока нет.</p></details>
         <% if (consoleEnabled) { %><div class="page-actions"><a class="button secondary" href="/sdk-demo">Открыть проверку JavaScript SDK</a></div><p class="muted small">Для этой страницы создайте отдельное Web-приложение с origin <code><%= guideEndpoint %></code>. Ключ сайта с другим origin для неё не подходит.</p><% } %>
       </section>
 
